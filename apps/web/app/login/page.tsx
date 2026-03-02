@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -55,12 +56,15 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
+    <main className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
+      <Link href="/" className="absolute top-6 left-6 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+        ← Back
+      </Link>
+      <Card className="w-full max-w-md border-border shadow-xl rounded-2xl transition-shadow duration-300 hover:shadow-2xl">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
           <CardDescription>
-            Enter your credentials to access the dashboard
+            Sign in to your Doubleclout workspace
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -73,6 +77,7 @@ export default function LoginPage() {
                 placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="h-10"
                 required
               />
             </div>
@@ -83,13 +88,14 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="h-10"
                 required
               />
             </div>
             {error && (
               <p className="text-sm text-destructive">{error}</p>
             )}
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-2">
               <Button
                 type="submit"
                 onClick={handleLogin}

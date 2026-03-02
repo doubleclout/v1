@@ -59,72 +59,61 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Your Pipeline</h1>
-        <p className="text-muted-foreground">
-          From idea to published. All in one place.
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Overview</h1>
+        <p className="mt-1 text-muted-foreground">
+          High-level system health & recent activity
         </p>
       </div>
 
-      <div className="flex gap-2 border-b pb-4">
-        <Link href="/dashboard" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">
-          Overview
-        </Link>
-        <Link href="/dashboard/insights" className="px-4 py-2 rounded-lg text-sm hover:bg-muted">
-          Ideas
-        </Link>
-        <Link href="/dashboard/insights" className="px-4 py-2 rounded-lg text-sm hover:bg-muted">
-          Drafts
-        </Link>
-        <Link href="/dashboard/insights" className="px-4 py-2 rounded-lg text-sm hover:bg-muted">
-          Published
-        </Link>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardDescription>Ideas</CardDescription>
-            <CardTitle className="text-3xl">{insightsResult?.count ?? 0}</CardTitle>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider">Insights Generated</CardDescription>
+            <CardTitle className="text-3xl font-semibold">{insightsResult?.count ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardDescription>Drafts</CardDescription>
-            <CardTitle className="text-3xl">{draftsResult?.count ?? 0}</CardTitle>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider">Drafts Pending</CardDescription>
+            <CardTitle className="text-3xl font-semibold">{draftsResult?.count ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardDescription>Published</CardDescription>
-            <CardTitle className="text-3xl">{publishedResult?.count ?? 0}</CardTitle>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider">Published Posts</CardDescription>
+            <CardTitle className="text-3xl font-semibold">{publishedResult?.count ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <CardDescription>Sensitivity Flags</CardDescription>
-            <CardTitle className="text-3xl">0</CardTitle>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider">Sensitivity Flags</CardDescription>
+            <CardTitle className="text-3xl font-semibold">0</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="border-border">
           <CardHeader>
-            <CardTitle>Ideas from your work</CardTitle>
+            <CardTitle className="text-lg font-semibold">Recent Insights</CardTitle>
             <CardDescription>Surfaced from Slack, Zoom, Google, Gmail</CardDescription>
           </CardHeader>
           <CardContent>
             {recentInsights.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                No insights yet. Connect a source to get started.
-              </p>
+              <div className="py-12 text-center">
+                <p className="text-sm font-medium text-foreground">No insights yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Insights are generated automatically from connected sources.</p>
+                <Link href="/dashboard/sources" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
+                  Connect Source →
+                </Link>
+              </div>
             ) : (
               <ul className="space-y-4">
                 {recentInsights.map((i) => (
-                  <li key={i.id} className="border-b border-border pb-4 last:border-0">
-                    <Link href={`/dashboard/insights?selected=${i.id}`} className="block">
-                      <p className="text-sm font-medium">{i.summary}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                  <li key={i.id} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                    <Link href={`/dashboard/insights?selected=${i.id}`} className="block rounded-lg hover:bg-muted/50 -m-2 p-2 transition-colors">
+                      <p className="text-sm font-medium text-foreground">{i.summary}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {i.sourceAttribution ?? "From your work"} · {i.confidence.toFixed(2)} confidence
                       </p>
                     </Link>
@@ -135,22 +124,22 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-border">
           <CardHeader>
-            <CardTitle>Published</CardTitle>
+            <CardTitle className="text-lg font-semibold">Published</CardTitle>
             <CardDescription>Track what went live. See what&apos;s resonating.</CardDescription>
           </CardHeader>
           <CardContent>
             {published.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
+              <p className="py-12 text-center text-sm text-muted-foreground">
                 No published posts yet.
               </p>
             ) : (
               <ul className="space-y-4">
                 {published.map((p) => (
-                  <li key={p.id} className="border-b border-border pb-4 last:border-0">
-                    <p className="text-sm line-clamp-2">{p.content?.slice(0, 120)}...</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                  <li key={p.id} className="border-b border-border pb-4 last:border-0 last:pb-0">
+                    <p className="text-sm line-clamp-2 text-foreground">{p.content?.slice(0, 120)}...</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {p.platform} · {p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : ""}
                     </p>
                   </li>
