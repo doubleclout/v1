@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { insight, draft, publication } from "@doubleclout/db";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc } from "@doubleclout/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 

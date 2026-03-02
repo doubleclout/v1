@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { toneConfig } from "@doubleclout/db";
-import { eq } from "drizzle-orm";
+import { eq } from "@doubleclout/db";
 import { ToneClient } from "./tone-client";
 
 export default async function TonePage() {

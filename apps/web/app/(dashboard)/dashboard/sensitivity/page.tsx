@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { sensitivityConfig } from "@doubleclout/db";
-import { eq } from "drizzle-orm";
+import { eq } from "@doubleclout/db";
 import { SensitivityClient } from "./sensitivity-client";
 
 export default async function SensitivityPage() {

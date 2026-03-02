@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { executionEvent, insight, orgRetention } from "@doubleclout/db";
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and, lt } from "@doubleclout/db";
 
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization");

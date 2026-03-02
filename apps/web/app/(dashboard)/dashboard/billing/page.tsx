@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { billingSubscription, insight } from "@doubleclout/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql } from "@doubleclout/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 

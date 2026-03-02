@@ -1,17 +1,11 @@
 name: Setup Vercel Env
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/setup-vercel-env.yml']
 jobs:
   setup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 9
       - run: node scripts/vercel-env.mjs
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

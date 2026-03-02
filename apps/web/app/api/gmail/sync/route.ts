@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and } from "@doubleclout/db";
 import { Queue } from "bullmq";
 
 export async function POST(request: Request) {

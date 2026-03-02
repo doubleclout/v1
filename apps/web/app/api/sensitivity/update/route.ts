@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { sensitivityConfig } from "@doubleclout/db";
-import { eq } from "drizzle-orm";
+import { eq } from "@doubleclout/db";
 
 export async function POST(request: Request) {
   const supabase = await createClient();

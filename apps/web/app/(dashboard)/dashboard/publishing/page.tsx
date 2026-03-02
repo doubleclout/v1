@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and } from "@doubleclout/db";
 import { PublishingClient } from "./publishing-client";
 
 export default async function PublishingPage() {

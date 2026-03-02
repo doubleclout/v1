@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { org } from "@doubleclout/db";
+import type { org as orgSchema } from "@doubleclout/db";
 
 const navItems = [
   { href: "/dashboard", label: "Overview" },
@@ -16,7 +16,7 @@ const navItems = [
   { href: "/dashboard/audit", label: "Audit Logs" },
 ];
 
-export function Sidebar({ org }: { org: typeof org.$inferSelect }) {
+export function Sidebar({ org }: { org: typeof orgSchema.$inferSelect }) {
   const router = useRouter();
 
   const handleSignOut = async () => {

@@ -1,7 +1,14 @@
-import { createDb } from "@doubleclout/db";
+import { createDb, type Db } from "@doubleclout/db";
 
-const globalForDb = globalThis as unknown as { db: ReturnType<typeof createDb> };
+const globalForDb = globalThis as unknown as { db: Db | undefined };
 
-export const db = globalForDb.db ?? createDb();
+function getDb(): Db {
+  if (!globalForDb.db) globalForDb.db = createDb();
+  return globalForDb.db;
+}
 
-if (process.env.NODE_ENV !== "production") globalForDb.db = db;
+export const db = new Proxy({} as Db, {
+  get(_, prop) {
+    return (getDb() as unknown as Record<string | symbol, unknown>)[prop];
+  },
+});

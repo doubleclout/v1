@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { org, integration } from "@doubleclout/db";
+import { org, integration, eq } from "@doubleclout/db";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     await db
       .update(org)
       .set({ name: teamName, updatedAt: new Date() })
-      .where((o, { eq }) => eq(o.id, targetOrgId));
+      .where(eq(org.id, targetOrgId));
   } else if (!targetOrgId) {
     const [newOrg] = await db
       .insert(org)
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     await db
       .update(org)
       .set({ slackTeamId: teamId, name: teamName, updatedAt: new Date() })
-      .where((o, { eq }) => eq(o.id, targetOrgId));
+      .where(eq(org.id, targetOrgId));
   }
 
   const existingIntegration = await db.query.integration.findFirst({
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
         status: "active",
         updatedAt: new Date(),
       })
-      .where((i, { eq }) => eq(i.id, existingIntegration.id));
+      .where(eq(integration.id, existingIntegration.id));
   } else {
     await db.insert(integration).values({
       orgId: targetOrgId!,

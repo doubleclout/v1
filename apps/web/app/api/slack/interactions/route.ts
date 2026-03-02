@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { insight, integration, draft, publication } from "@doubleclout/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and } from "@doubleclout/db";
 import { generateDraft } from "@doubleclout/ai";
 import { logAudit } from "@/lib/audit";
 

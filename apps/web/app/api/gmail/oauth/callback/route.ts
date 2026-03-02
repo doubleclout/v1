@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and } from "@doubleclout/db";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
         tokens: {
           access: tokenData.access_token,
           refresh: tokenData.refresh_token,
-          expiry: tokenData.expires_in ? Date.now() + tokenData.expires_in * 1000 : undefined,
+          ...(tokenData.expires_in && { expiry: String(Date.now() + tokenData.expires_in * 1000) }),
         },
         status: "active",
         updatedAt: new Date(),
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
       tokens: {
         access: tokenData.access_token,
         refresh: tokenData.refresh_token,
-        expiry: tokenData.expires_in ? Date.now() + tokenData.expires_in * 1000 : undefined,
+        ...(tokenData.expires_in && { expiry: String(Date.now() + tokenData.expires_in * 1000) }),
       },
       status: "active",
     });

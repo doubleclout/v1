@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/dashboard/sidebar";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -20,7 +22,7 @@ export default async function DashboardLayout({
     with: { org: true },
   });
 
-  if (!dbUser) {
+  if (!dbUser || !dbUser.org) {
     redirect("/login");
   }
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { billingSubscription, org } from "@doubleclout/db";
-import { eq } from "drizzle-orm";
+import { eq } from "@doubleclout/db";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();

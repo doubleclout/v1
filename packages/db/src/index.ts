@@ -10,3 +10,4 @@ export function createDb() {
 
 export type Db = ReturnType<typeof createDb>;
 export * from "./schema";
+export { eq, and, or, desc, asc, sql, lt, gt, gte, lte } from "drizzle-orm";

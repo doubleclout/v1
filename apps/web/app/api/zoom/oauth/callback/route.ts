@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { org, integration } from "@doubleclout/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and } from "@doubleclout/db";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
   if (!targetOrgId) {
     const [newOrg] = await db
       .insert(org)
-      .values({ name: userData.email?.split("@")[0] + "'s Workspace" ?? "Workspace" })
+      .values({ name: (userData.email?.split("@")[0] ?? "user") + "'s Workspace" })
       .returning();
     targetOrgId = newOrg!.id;
   }

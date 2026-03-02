@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { auditLog } from "@doubleclout/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc } from "@doubleclout/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function AuditPage() {

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
-import { eq } from "drizzle-orm";
+import { eq } from "@doubleclout/db";
 import { SourcesClient } from "./sources-client";
 
 export default async function SourcesPage({

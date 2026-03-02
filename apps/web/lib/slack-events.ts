@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { Queue } from "bullmq";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and } from "@doubleclout/db";
 
 const connection = process.env.REDIS_URL
   ? {

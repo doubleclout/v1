@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
 import { insight } from "@doubleclout/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc } from "@doubleclout/db";
 import { InsightsClient } from "./insights-client";
 
 export default async function InsightsPage() {
