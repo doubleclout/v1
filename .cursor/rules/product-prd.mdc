@@ -1,0 +1,389 @@
+---
+globs: doubleclout
+alwaysApply: false
+---
+
+1. Product Vision
+Build a Slack-native execution intelligence platform that:
+• Automatically ingests execution context from multiple work tools
+ • Extracts structured insights
+ • Applies configurable redaction & sensitivity policies
+ • Generates high-quality narrative drafts
+ • Enables human-in-loop publishing
+ • Compounds a structured execution knowledge graph
+This is NOT a LinkedIn tool.
+It is:
+Execution → Structured Insight → Controlled Expression.
+
+2. Target Users
+Primary:
+ • Growth teams
+ • GTM ops
+ • Head of Growth
+ • Early-stage operators
+Secondary:
+ • Founders
+Workspace-based SaaS.
+
+3. Core Product Philosophy
+Slack = Primary Interaction Surface
+ Dashboard = Configuration + Control + History
+ Multi-Source = Background Intelligence Layer
+
+4. Finalized Tech Stack
+Frontend
+Next.js (App Router)
+
+
+TailwindCSS
+
+
+shadcn/ui
+
+
+Hosted on Vercel
+
+
+Used for:
+ • Settings
+ • Source management
+ • Billing
+ • Sensitivity configuration
+ • Insight history
+
+Backend
+Node.js (TypeScript)
+
+
+Drizzle ORM
+
+
+Hosted on Railway / Fly.io
+
+
+
+Database
+Supabase Postgres
+
+
+pgvector enabled
+
+
+Row Level Security (RLS) enforced
+
+
+Supabase Storage for temporary artifacts
+
+
+
+Auth
+Supabase Auth
+
+
+Slack OAuth
+
+
+Google OAuth (Workspace + Gmail)
+
+
+LinkedIn OAuth (publishing)
+
+
+Workspace = Org.
+
+Queue & Background Jobs
+BullMQ
+
+
+Upstash Redis
+
+
+Handles:
+ • Transcript processing
+ • Insight extraction
+ • Draft generation
+ • Retry logic
+ • Scheduled digests
+
+AI Layer
+Internal abstraction service:
+ai.extractInsight()
+ ai.generateDraft()
+ ai.applyRedaction()
+ ai.scoreSensitivity()
+ ai.applyTone()
+Models:
+ • OpenAI
+ • Anthropic
+
+MCP Usage
+MCP is used for:
+• Tool orchestration for Slack, Google Docs, Zoom
+ • Structured retrieval
+ • Context compression
+ • Controlled model tool calls
+NOT used for:
+ • Billing
+ • Auth
+ • Core DB logic
+
+Payments
+Dodo Payments
+
+
+Subscription per Slack workspace
+
+
+Webhooks update org plan
+
+
+Usage enforcement middleware
+
+
+
+5. Multi-Source Automatic Ingestion
+5.1 Slack
+Selected channels only
+
+
+Event API listener
+
+
+Thread capture
+
+
+Message classification
+
+
+
+5.2 Zoom
+OAuth
+
+
+Transcript ingestion
+
+
+Post-call processing trigger
+
+
+Auto insight detection
+
+
+
+5.3 Google Meet
+Via Google Calendar event + transcript ingestion (where available)
+
+
+
+5.4 Google Workspace
+OAuth once → allow:
+• Docs
+ • Sheets
+ • Slides
+ • Drive folder monitoring
+User selects:
+ • Which folders to monitor
+ • Which docs to auto-ingest
+
+5.5 Gmail
+OAuth
+ User configures:
+ • Specific labels
+ • Specific senders
+ • Specific thread types
+
+6. Execution Normalization Layer (Core Moat Layer)
+All events converted into:
+ExecutionEvent {
+ id
+ org_id
+ source
+ type
+ actors
+ timestamp
+ raw_content
+ structured_metadata
+ sensitivity_score
+ }
+Then embedded using pgvector.
+This becomes the Execution Knowledge Graph.
+
+7. Sensitivity & Filtering System (Dashboard Controls)
+Users configure:
+7.1 Data Controls
+Toggle:
+• Allow numeric metrics in output
+ • Mask percentages
+ • Mask revenue numbers
+ • Mask client names
+ • Mask company names
+ • Mask personal names
+ • Mask internal strategy references
+Each has:
+ ON / OFF / Ask before publish
+
+7.2 Content Tone Controls
+Default output style:
+• Educational
+ • Insightful
+ • Tactical
+ • Contrarian
+ • Reflective
+ • Executive summary
+Tone profile stored per org.
+
+7.3 Redaction Strictness
+Low → Moderate → High
+Redaction engine runs before draft generation.
+
+8. Insight Detection Engine
+Automatic ingestion runs:
+Event classifier
+
+
+Insight detection scoring
+
+
+Correlation detection (cross-source pattern)
+
+
+Confidence threshold check
+
+
+If confidence > threshold:
+Slack Bot posts:
+“New insight detected from Zoom call + Slack discussion.
+ Generate draft?”
+User can:
+• Generate draft
+ • Ignore
+ • Mark as internal only
+ • Save to knowledge base
+
+9. Draft Generation
+Three variations generated:
+Educational
+
+
+Tactical breakdown
+
+
+Narrative reflection
+
+
+All passed through:
+• Sensitivity filter
+ • Tone control
+ • Org voice model (future)
+
+10. Slack Primary Flow
+Example Flow
+Zoom call ends →
+ Transcript ingested →
+ Insight detected →
+ Slack bot posts in #growth:
+“Insight detected: Activation improved after onboarding simplification.
+ Generate draft?”
+User clicks →
+ Slack modal opens →
+ Editable draft →
+ Publish →
+LinkedIn API called →
+ Success confirmation.
+
+11. Dashboard Capabilities
+• Integration management
+ • Sensitivity settings
+ • Tone profile
+ • Retention policy
+ • Insight archive
+ • Knowledge graph view (future)
+ • Billing
+
+12. Security Architecture
+Mandatory:
+• AES-256 at rest
+ • TLS in transit
+ • OAuth token encryption
+ • RLS for org isolation
+ • Signed Slack requests
+ • Audit logs
+ • Configurable retention (7/30/90 days)
+ • Raw transcript deletion after processing (optional)
+No auto-posting without approval.
+
+13. Subscription Plans (via Dodo)
+Free:
+ • Limited insights/month
+ • Slack-only ingestion
+ • No LinkedIn publish
+Pro:
+ • Multi-source ingestion
+ • LinkedIn publish
+ • Sensitivity controls
+ • Draft variations
+Team:
+ • Multi-user roles
+ • Advanced controls
+ • Extended retention
+Enterprise (future):
+ • SSO
+ • Dedicated environment
+ • Custom retention
+ • Advanced audit logs
+
+14. Database Core Tables
+org
+ user
+ integration
+ execution_event
+ insight
+ draft
+ publication
+ billing_subscription
+ sensitivity_config
+ tone_config
+All scoped by org_id.
+
+15. Key Metrics
+Primary:
+ • Weekly Active Slack Interactions
+Secondary:
+ • Insights generated per org
+ • Draft-to-publish ratio
+ • Insight confidence score distribution
+ • Retention (week 4)
+
+16. Moat Foundations
+From Day 1:
+• Cross-source execution graph
+ • Structured event taxonomy
+ • Sensitivity-aware AI processing
+ • Pattern correlation engine
+ • Insight-performance mapping
+Over time:
+• Industry-specific insight models
+ • Narrative structure learning
+ • Compounding execution dataset
+
+17. Risks
+• Over-ingestion overwhelm
+ • Privacy concerns
+ • AI hallucination
+ • LinkedIn API limits
+ • Zoom transcript inconsistencies
+Mitigation:
+• Confidence threshold gating
+ • Human approval required
+ • Sensitivity filters
+ • Conservative defaults
+ • Clear onboarding messaging
+
+18. V1 Scope Boundaries
+Included:
+ • Slack
+ • Zoom
+ • Google Workspace
+ • Gmail
+ • LinkedIn publish
+ • Sensitivity controls

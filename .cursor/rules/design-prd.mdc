@@ -1,0 +1,370 @@
+---
+globs: doubleclout
+alwaysApply: false
+---
+
+1. Design Philosophy
+Core Principles
+Slack-native first.
+
+
+Minimal cognitive load.
+
+
+Safe by default.
+
+
+Intelligent but non-intrusive.
+
+
+No AI gimmicks.
+
+
+Enterprise-clean aesthetic.
+
+
+Settings power hidden but accessible.
+
+
+
+2. Design System Foundation
+Visual Style
+Tone:
+ • Professional
+ • Calm
+ • Intelligent
+ • Not playful
+ • Not futuristic
+Inspiration:
+ Linear × Notion × Slack × Vercel
+
+Color Palette
+Primary:
+ Deep indigo / slate
+Accent:
+ Soft electric blue
+Status Colors:
+ Green – success
+ Amber – review required
+ Red – sensitive detected
+ Gray – inactive
+Background:
+ Very light gray (#F7F8FA range)
+Cards:
+ White with soft border (#E5E7EB style)
+
+Typography
+Primary:
+ Inter
+Hierarchy:
+H1 – 28px / semibold
+ H2 – 22px / semibold
+ H3 – 18px / medium
+ Body – 14px
+ Meta – 12px
+Slack UI uses Slack-native formatting.
+
+3. Information Architecture
+Primary Surfaces:
+Slack Bot (Primary)
+
+
+Web Dashboard (Secondary)
+
+
+
+4. Slack UI Design PRD
+Slack is NOT visually designed — but interactions are.
+
+4.1 Slack Insight Notification
+Bot Message Layout:
+Title:
+ “New Insight Detected”
+Body:
+ Short structured summary:
+• Source: Zoom Call
+ • Confidence: High
+ • Sensitivity: Moderate
+ • Insight: Removing onboarding step reduced friction
+Actions:
+[ Generate Draft ]
+ [ Save Internal ]
+ [ Ignore ]
+
+4.2 Draft Modal (Slack Modal)
+Modal Structure:
+Header:
+ Generate Draft
+Section 1: Insight Summary (read-only, collapsible)
+Section 2: Draft Selector
+Radio:
+ • Educational
+ • Tactical
+ • Reflective
+Textarea:
+ Editable draft
+Footer:
+[ Cancel ]
+ [ Publish ]
+ [ Save as Internal ]
+If sensitive content detected:
+Warning banner:
+ “Sensitive data masked. Review before publishing.”
+
+4.3 Slack Settings Shortcut
+Slash command:
+ /arc-settings
+Opens dashboard link.
+
+5. Dashboard Design PRD
+
+5.1 Layout Structure
+Left Sidebar:
+ • Overview
+ • Insights
+ • Sources
+ • Sensitivity Controls
+ • Tone Profile
+ • Publishing
+ • Billing
+ • Audit Logs
+Top Bar:
+ Workspace name
+ Plan badge
+ User avatar
+Main Panel:
+ Context-dependent
+
+6. Overview Page
+Purpose:
+ High-level system health.
+Sections:
+Recent Insights (last 7 days)
+
+
+Insights Generated
+
+
+Drafts Pending
+
+
+Published Posts
+
+
+Sensitivity Flags Triggered
+
+
+Cards:
+ Minimal, clean, small charts optional.
+
+7. Insights Page
+Table Layout:
+Columns:
+ • Date
+ • Source
+ • Confidence
+ • Sensitivity
+ • Status
+ • Action
+Clicking opens side drawer.
+Side Drawer Shows:
+• Full structured insight
+ • Related sources
+ • Generate draft button
+ • Mark internal only
+
+8. Sources Page
+Card-based layout.
+Each integration card:
+Slack
+ Zoom
+ Google Workspace
+ Gmail
+Each card shows:
+Status:
+ Connected / Not Connected
+Settings Button
+
+Source Settings Modal
+Slack:
+ • Select channels
+ • Toggle auto-ingestion
+ • Retention period
+Zoom:
+ • Auto process transcripts toggle
+ • Process only recorded calls toggle
+Google Workspace:
+ • Folder selection UI
+ • Monitor specific docs toggle
+Gmail:
+ • Label selection dropdown
+ • Sender whitelist
+
+9. Sensitivity Controls Page
+This is critical UX.
+Layout:
+ Grouped toggle switches.
+Section: Numeric Data
+• Allow percentages
+ • Allow revenue numbers
+ • Mask metrics above threshold
+Section: Names
+• Allow personal names
+ • Allow client names
+ • Allow company names
+Section: Strategic Info
+• Mask roadmap items
+ • Mask internal tool references
+Redaction Strictness Slider:
+Low — Moderate — High
+Real-time preview panel:
+Example draft shown with masking preview.
+
+10. Tone Profile Page
+Radio-based selection:
+Default Tone:
+ • Educational
+ • Tactical
+ • Reflective
+ • Contrarian
+Optional:
+ Custom voice notes textarea.
+
+11. Publishing Page
+Connected Accounts:
+LinkedIn
+Status:
+ Connected / Reconnect
+Settings:
+ • Default visibility
+ • Default hashtags on/off
+ • Schedule future publishing toggle
+
+12. Billing Page
+Plan Card:
+ • Current Plan
+ • Usage this month
+ • Upgrade button
+Dodo embedded checkout modal.
+Usage Bar:
+ Insights generated / limit
+
+13. Audit Logs Page
+Enterprise-style simple table:
+• Action
+ • User
+ • Timestamp
+ • Source
+Important for trust.
+
+14. Empty States
+Insights Page Empty:
+Headline:
+ “No insights yet.”
+Subtext:
+ “Insights are generated automatically from connected sources.”
+CTA:
+ Connect Source
+
+15. Loading States
+Use skeleton loaders.
+ Never spinner-only screens.
+
+16. Error States
+If AI fails:
+Slack:
+ “Insight extraction failed. Retry?”
+Dashboard:
+ Retry button.
+If LinkedIn publish fails:
+Show exact API error message.
+ Retry button.
+
+17. Edge Cases
+Case: High sensitivity detected
+Slack:
+ Require explicit confirmation checkbox before publish.
+Case: Low confidence insight
+Slack:
+ “Confidence low. Generate anyway?”
+Case: No transcript available
+Show:
+ “Transcript not available for this call.”
+
+18. Mobile Responsiveness
+Dashboard fully responsive.
+Slack remains primary surface.
+
+19. Component Library Required in Figma
+Buttons:
+ Primary
+ Secondary
+ Danger
+Cards:
+ Integration card
+ Insight card
+ Metric card
+Tables:
+ Simple table
+ Table with status badge
+Modals:
+ Standard modal
+ Warning modal
+ Confirm modal
+Toggle:
+ On/Off switch
+Slider:
+ Strictness slider
+Badge:
+ Plan badge
+ Sensitivity badge
+ Confidence badge
+Drawer:
+ Side panel drawer
+
+20. Design Tokens
+Spacing:
+ 8px grid system
+Radius:
+ 12px card radius
+Shadow:
+ Very subtle elevation only on modals
+
+21. Figma MCP Structure
+Create pages:
+Design System
+
+
+Slack Interaction Flows
+
+
+Dashboard – Overview
+
+
+Dashboard – Insights
+
+
+Dashboard – Sources
+
+
+Dashboard – Sensitivity
+
+
+Dashboard – Tone
+
+
+Dashboard – Billing
+
+
+Edge Cases
+
+
+Components page should be reusable.
+
+22. UX Goals
+The user should feel:
+• In control
+ • Safe
+ • Intelligent
+ • Not automated blindly
+ • Confident about publishing

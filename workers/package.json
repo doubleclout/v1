@@ -1,0 +1,21 @@
+{
+  "name": "workers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx index.ts"
+  },
+  "dependencies": {
+    "@doubleclout/ai": "workspace:*",
+    "@doubleclout/db": "workspace:*",
+    "@doubleclout/shared": "workspace:*",
+    "bullmq": "^5.1.0",
+    "drizzle-orm": "^0.29.3",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
