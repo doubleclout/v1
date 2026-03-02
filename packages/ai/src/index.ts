@@ -7,11 +7,20 @@ import type {
   ToneConfig,
 } from "@doubleclout/shared";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY is required");
+  return new OpenAI({ apiKey: key });
+}
+
+function getAnthropic() {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY is required");
+  return new Anthropic({ apiKey: key });
+}
 
 export async function extractInsight(rawContent: string): Promise<ExtractInsightResult> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       {
@@ -53,7 +62,7 @@ export async function generateDraft(
   const tone = toneConfig?.defaultTone ?? "educational";
   const customNotes = toneConfig?.customNotes ?? "";
 
-  const response = await anthropic.messages.create({
+  const response = await getAnthropic().messages.create({
     model: "claude-3-5-haiku-20241022",
     max_tokens: 1024,
     system: `You write professional LinkedIn-style posts from execution insights.
@@ -109,7 +118,7 @@ export function applyRedaction(
 }
 
 export async function scoreSensitivity(content: string): Promise<number> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
       {
