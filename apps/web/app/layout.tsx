@@ -8,6 +8,9 @@ const syne = Syne({ subsets: ["latin"], variable: "--font-display" });
 export const metadata: Metadata = {
   title: "Doubleclout - Execution Intelligence",
   description: "Slack-native execution intelligence platform",
+  icons: {
+    icon: "/dc_logo.svg",
+  },
 };
 
 export const viewport = {
