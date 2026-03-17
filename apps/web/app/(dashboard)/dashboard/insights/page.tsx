@@ -40,7 +40,7 @@ export default async function InsightsPage() {
         </p>
       </div>
 
-      <InsightsClient insights={insights} />
+      <InsightsClient insights={insights} user={{ firstName: dbUser.firstName, lastName: dbUser.lastName, avatarUrl: dbUser.avatarUrl }} />
     </div>
   );
 }

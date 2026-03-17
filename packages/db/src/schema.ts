@@ -68,6 +68,10 @@ export const user = pgTable("user", {
   email: text("email").notNull(),
   authUserId: text("auth_user_id").unique(), // Supabase auth.users.id
   slackUserId: text("slack_user_id"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  avatarUrl: text("avatar_url"),
+  phone: text("phone"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -215,7 +219,7 @@ export const auditLog = pgTable("audit_log", {
 
 // Relations
 export const orgRelations = relations(org, ({ many }) => ({
-  users: many(user),
+  users: many(user, { relationName: "userToOrg" }),
   integrations: many(integration),
   executionEvents: many(executionEvent),
   insights: many(insight),
@@ -228,7 +232,11 @@ export const orgRelations = relations(org, ({ many }) => ({
 }));
 
 export const userRelations = relations(user, ({ one }) => ({
-  org: one(org),
+  org: one(org, {
+    fields: [user.orgId],
+    references: [org.id],
+    relationName: "userToOrg",
+  }),
 }));
 
 export const integrationRelations = relations(integration, ({ one }) => ({

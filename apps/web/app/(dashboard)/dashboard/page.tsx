@@ -59,61 +59,61 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Overview</h1>
-        <p className="mt-1 text-muted-foreground">
+        <h1 className="text-2xl font-display font-semibold tracking-tight text-zinc-900">Overview</h1>
+        <p className="mt-1 text-zinc-600">
           High-level system health & recent activity
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border">
+        <Card className="border-zinc-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider">Insights Generated</CardDescription>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">Insights Generated</CardDescription>
             <CardTitle className="text-3xl font-semibold">{insightsResult?.count ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-border">
+        <Card className="border-zinc-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider">Drafts Pending</CardDescription>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">Drafts Pending</CardDescription>
             <CardTitle className="text-3xl font-semibold">{draftsResult?.count ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-border">
+        <Card className="border-zinc-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider">Published Posts</CardDescription>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">Published Posts</CardDescription>
             <CardTitle className="text-3xl font-semibold">{publishedResult?.count ?? 0}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-border">
+        <Card className="border-zinc-200/80 bg-white">
           <CardHeader className="pb-2">
-            <CardDescription className="text-xs font-medium uppercase tracking-wider">Sensitivity Flags</CardDescription>
+            <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">Sensitivity Flags</CardDescription>
             <CardTitle className="text-3xl font-semibold">0</CardTitle>
           </CardHeader>
         </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border">
+        <Card className="border-zinc-200/80 bg-white">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Recent Insights</CardTitle>
-            <CardDescription>Surfaced from Slack, Zoom, Google, Gmail</CardDescription>
+            <CardTitle className="text-lg font-display font-semibold text-zinc-900">Recent Insights</CardTitle>
+            <CardDescription className="text-zinc-600">Surfaced from Slack, Zoom, Google, Gmail</CardDescription>
           </CardHeader>
           <CardContent>
             {recentInsights.length === 0 ? (
               <div className="py-12 text-center">
-                <p className="text-sm font-medium text-foreground">No insights yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Insights are generated automatically from connected sources.</p>
-                <Link href="/dashboard/sources" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">
+                <p className="text-sm font-medium text-zinc-900">No insights yet</p>
+                <p className="mt-1 text-sm text-zinc-600">Insights are generated automatically from connected sources.</p>
+                <Link href="/dashboard/sources" className="mt-4 inline-block text-sm font-medium text-[var(--accent)] hover:underline">
                   Connect Source →
                 </Link>
               </div>
             ) : (
               <ul className="space-y-4">
                 {recentInsights.map((i) => (
-                  <li key={i.id} className="border-b border-border pb-4 last:border-0 last:pb-0">
-                    <Link href={`/dashboard/insights?selected=${i.id}`} className="block rounded-lg hover:bg-muted/50 -m-2 p-2 transition-colors">
-                      <p className="text-sm font-medium text-foreground">{i.summary}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                  <li key={i.id} className="border-b border-zinc-200/80 pb-4 last:border-0 last:pb-0">
+                    <Link href={`/dashboard/insights?selected=${i.id}`} className="block rounded-lg hover:bg-zinc-50 -m-2 p-2 transition-colors">
+                      <p className="text-sm font-medium text-zinc-900">{i.summary}</p>
+                      <p className="mt-1 text-xs text-zinc-600">
                         {i.sourceAttribution ?? "From your work"} · {i.confidence.toFixed(2)} confidence
                       </p>
                     </Link>
@@ -124,22 +124,22 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border">
+        <Card className="border-zinc-200/80 bg-white">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Published</CardTitle>
-            <CardDescription>Track what went live. See what&apos;s resonating.</CardDescription>
+            <CardTitle className="text-lg font-display font-semibold text-zinc-900">Published</CardTitle>
+            <CardDescription className="text-zinc-600">Track what went live. See what&apos;s resonating.</CardDescription>
           </CardHeader>
           <CardContent>
             {published.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">
+              <p className="py-12 text-center text-sm text-zinc-600">
                 No published posts yet.
               </p>
             ) : (
               <ul className="space-y-4">
                 {published.map((p) => (
-                  <li key={p.id} className="border-b border-border pb-4 last:border-0 last:pb-0">
-                    <p className="text-sm line-clamp-2 text-foreground">{p.content?.slice(0, 120)}...</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                  <li key={p.id} className="border-b border-zinc-200/80 pb-4 last:border-0 last:pb-0">
+                    <p className="text-sm line-clamp-2 text-zinc-900">{p.content?.slice(0, 120)}...</p>
+                    <p className="mt-1 text-xs text-zinc-600">
                       {p.platform} · {p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : ""}
                     </p>
                   </li>

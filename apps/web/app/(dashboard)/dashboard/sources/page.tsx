@@ -7,10 +7,12 @@ import { SourcesClient } from "./sources-client";
 export default async function SourcesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ onboarding?: string }>;
+  searchParams: Promise<{ onboarding?: string; success?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const isOnboarding = params?.onboarding === "1";
+  const oauthSuccess = params?.success;
+  const oauthError = params?.error;
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
@@ -18,9 +20,10 @@ export default async function SourcesPage({
 
   const dbUser = await db.query.user.findFirst({
     where: (u, { eq }) => eq(u.authUserId, authUser.id),
+    with: { org: true },
   });
 
-  if (!dbUser) return null;
+  if (!dbUser || !dbUser.org) return null;
 
   const integrations = await db
     .select()
@@ -34,23 +37,44 @@ export default async function SourcesPage({
   const githubInt = integrations.find((i) => i.source === "github");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {isOnboarding && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 p-4">
-          <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <p className="text-sm font-medium text-blue-900">
             Welcome to Doubleclout! Connect your first source to start turning work into insights.
           </p>
         </div>
       )}
+      {oauthSuccess && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-medium text-emerald-800">
+            {oauthSuccess === "slack" && "Slack connected successfully."}
+            {oauthSuccess === "zoom" && "Zoom connected successfully."}
+            {oauthSuccess === "google" && "Google Workspace connected successfully."}
+            {oauthSuccess === "gmail" && "Gmail connected successfully."}
+            {oauthSuccess === "github" && "GitHub connected successfully."}
+          </p>
+        </div>
+      )}
+      {oauthError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-medium text-red-800">
+            {oauthError.includes("denied") && "Connection was cancelled."}
+            {oauthError.includes("token_failed") && "Connection failed. Please try again."}
+            {!oauthError.includes("denied") && !oauthError.includes("token_failed") && "Something went wrong. Please try again."}
+          </p>
+        </div>
+      )}
       <div>
-        <h1 className="text-2xl font-semibold">Sources</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-display font-semibold tracking-tight text-zinc-900">Sources</h1>
+        <p className="mt-1 text-zinc-600">
           Connect Slack, Zoom, Google Workspace, Gmail, and GitHub. Ideas surface from your actual work.
         </p>
       </div>
 
       <SourcesClient
         orgId={dbUser.orgId}
+        plan={dbUser.org.plan}
         slackConnected={!!slackInt}
         slackChannelIds={(slackInt?.config as { channelIds?: string[] })?.channelIds ?? []}
         zoomConnected={!!zoomInt}

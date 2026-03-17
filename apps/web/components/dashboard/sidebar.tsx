@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { org as orgSchema } from "@doubleclout/db";
+import type { org as orgSchema, user as userSchema } from "@doubleclout/db";
 
 const navItems = [
   { href: "/dashboard", label: "Overview" },
@@ -15,27 +14,42 @@ const navItems = [
   { href: "/dashboard/publishing", label: "Publishing" },
   { href: "/dashboard/billing", label: "Billing" },
   { href: "/dashboard/audit", label: "Audit Logs" },
+  { href: "/dashboard/settings", label: "Settings" },
 ];
 
-export function Sidebar({ org }: { org: typeof orgSchema.$inferSelect }) {
-  const router = useRouter();
+type UserWithOrg = typeof userSchema.$inferSelect & { org: typeof orgSchema.$inferSelect | null };
+
+export function Sidebar({ org, user }: { org: typeof orgSchema.$inferSelect; user: UserWithOrg }) {
+  const workspaceLabel = user?.firstName
+    ? `${user.firstName}'s Workspace`
+    : org.name;
   const pathname = usePathname();
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  };
-
   return (
-    <aside className="flex w-64 flex-col border-r border-border bg-card">
-      <div className="border-b border-border p-6">
-        <Link href="/dashboard" className="block">
-          <h2 className="font-semibold text-lg tracking-tight text-foreground">Doubleclout</h2>
+    <aside className="flex w-64 shrink-0 flex-col border-r border-zinc-200/80 bg-white h-screen overflow-y-auto">
+      <div className="border-b border-zinc-200/80 p-6">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Image src="/dc_logo.svg" alt="DoubleClout" width={28} height={28} className="h-7 w-7" unoptimized />
+          <h2 className="font-display font-semibold text-lg tracking-tight text-zinc-900">DoubleClout</h2>
         </Link>
-        <p className="mt-1 text-sm text-muted-foreground truncate">{org.name}</p>
-        <span className="mt-2 inline-block rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <div className="mt-2 flex items-center gap-2">
+          {user?.avatarUrl ? (
+            <Image
+              src={user.avatarUrl}
+              alt=""
+              width={24}
+              height={24}
+              className="rounded-full object-cover shrink-0"
+              unoptimized
+            />
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center text-xs font-medium text-zinc-500 shrink-0">
+              {(user?.firstName ?? user?.email ?? "?")[0]?.toUpperCase()}
+            </div>
+          )}
+          <p className="text-sm text-zinc-600 truncate flex-1 min-w-0" title={workspaceLabel}>{workspaceLabel}</p>
+        </div>
+        <span className="mt-2 inline-block rounded-md bg-[var(--accent)]/10 px-2 py-0.5 text-xs font-medium text-[var(--accent)]">
           {org.plan}
         </span>
       </div>
@@ -48,8 +62,8 @@ export function Sidebar({ org }: { org: typeof orgSchema.$inferSelect }) {
               href={item.href}
               className={`block rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                  : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
               }`}
             >
               {item.label}
@@ -57,15 +71,6 @@ export function Sidebar({ org }: { org: typeof orgSchema.$inferSelect }) {
           );
         })}
       </nav>
-      <div className="border-t border-border p-4">
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Sign out
-        </button>
-      </div>
     </aside>
   );
 }

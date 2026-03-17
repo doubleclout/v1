@@ -15,6 +15,35 @@ const TOGGLE_OPTIONS = [
   { id: "maskInternalToolRefs", label: "Mask internal tool references", section: "strategic" },
 ] as const;
 
+const REDACT = "[redacted]";
+
+function buildPreview(toggles: Record<string, string>, strictness: string) {
+  const get = (id: string) => toggles[id] ?? "off";
+  const showPercentages = get("allowPercentages") === "on";
+  const showRevenue = get("allowRevenueNumbers") === "on";
+  const showPersonalNames = get("maskPersonalNames") !== "on";
+  const showClientNames = get("maskClientNames") !== "on";
+  const showCompanyNames = get("maskCompanyNames") !== "on";
+  const showRoadmap = get("maskRoadmapItems") !== "on";
+  const showToolRefs = get("maskInternalToolRefs") !== "on";
+
+  const pct = showPercentages ? "23%" : REDACT;
+  const revenue = showRevenue ? "$400K" : REDACT;
+  const sarah = showPersonalNames ? "Sarah" : REDACT;
+  const acme = showClientNames ? "Acme Corp" : REDACT;
+  const productPlanning = showToolRefs ? "#product-planning" : REDACT;
+  const roadmap = showRoadmap ? "Q2 roadmap" : REDACT;
+
+  const pipeline = strictness === "high" ? REDACT : "pipeline";
+
+  const parts: string[] = [];
+  parts.push(`Our activation improved ${pct} after we removed the onboarding step.`);
+  parts.push(`The team discussed this in ${productPlanning} — ${sarah} mentioned the ${revenue} ${pipeline} impact.`);
+  parts.push(`${acme} is aligned with our ${roadmap} priorities.`);
+
+  return parts.join(" ");
+}
+
 export function SensitivityClient({
   orgId,
   initialToggles,
@@ -45,6 +74,9 @@ export function SensitivityClient({
   const numericToggles = TOGGLE_OPTIONS.filter((t) => t.section === "numeric");
   const namesToggles = TOGGLE_OPTIONS.filter((t) => t.section === "names");
   const strategicToggles = TOGGLE_OPTIONS.filter((t) => t.section === "strategic");
+
+  const previewText = buildPreview(toggles, strictness);
+  const hasAskBeforePublish = Object.values(toggles).some((v) => v === "ask");
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -149,17 +181,20 @@ export function SensitivityClient({
       <Card>
         <CardHeader>
           <CardTitle>Preview</CardTitle>
-          <CardDescription>Example draft with masking applied</CardDescription>
+          <CardDescription>Example draft with masking applied — updates live as you change settings</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-            <p>
-              Our activation improved 23% after we removed the onboarding step. The team discussed this in #product-planning — Sarah mentioned the $400K pipeline impact.
-            </p>
-            <p className="mt-2 text-muted-foreground">
-              With strictness &quot;moderate&quot; and revenue/percentages off: numbers and names would be redacted.
+            <p>{previewText}</p>
+            <p className="mt-2 text-muted-foreground text-xs">
+              Strictness: {strictness}
             </p>
           </div>
+          {hasAskBeforePublish && (
+            <Button className="w-full bg-[var(--accent)] hover:opacity-90">
+              Refine or publish to LinkedIn
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
