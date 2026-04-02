@@ -4,16 +4,32 @@ import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
 import { eq, and } from "@doubleclout/db";
 
-const connection = process.env.REDIS_URL
-  ? {
-      host: new URL(process.env.REDIS_URL).hostname,
-      port: parseInt(new URL(process.env.REDIS_URL).port || "6379"),
-      password: new URL(process.env.REDIS_URL).password || undefined,
-    }
-  : { host: "localhost", port: 6379 };
+function getConnection() {
+  return process.env.REDIS_URL
+    ? {
+        host: new URL(process.env.REDIS_URL).hostname,
+        port: parseInt(new URL(process.env.REDIS_URL).port || "6379"),
+        password: new URL(process.env.REDIS_URL).password || undefined,
+      }
+    : { host: "localhost", port: 6379 };
+}
 
-const slackQueue = new Queue("process-slack-message", { connection });
-const insightQueue = new Queue("insight-extraction", { connection });
+let slackQueue: Queue | null = null;
+let insightQueue: Queue | null = null;
+
+function getSlackQueue() {
+  if (!slackQueue) {
+    slackQueue = new Queue("process-slack-message", { connection: getConnection() });
+  }
+  return slackQueue;
+}
+
+function getInsightQueue() {
+  if (!insightQueue) {
+    insightQueue = new Queue("insight-extraction", { connection: getConnection() });
+  }
+  return insightQueue;
+}
 
 function verifySlackSignature(body: string, signature: string): boolean {
   const secret = process.env.SLACK_SIGNING_SECRET;
@@ -64,7 +80,7 @@ export async function handleSlackEvent(body: string, signature: string) {
         const config = int.config as { channelIds?: string[] };
         const channelIds = config?.channelIds ?? [];
         if (channelIds.length === 0 || channelIds.includes(channelId)) {
-          await slackQueue.add("process-slack-message", {
+          await getSlackQueue().add("process-slack-message", {
             orgId: int.orgId,
             channelId,
             messageTs,
@@ -78,5 +94,3 @@ export async function handleSlackEvent(body: string, signature: string) {
 
   return {};
 }
-
-export { slackQueue, insightQueue };
