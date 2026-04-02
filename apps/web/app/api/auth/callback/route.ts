@@ -11,13 +11,21 @@ export async function GET(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    return NextResponse.redirect(`${origin}/login?error=auth`);
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!url || !key || !databaseUrl) {
+    return NextResponse.redirect(`${origin}/login?error=config`);
   }
 
   // Create redirect response first so Supabase can set session cookies on it
   let redirectTo = `${origin}/login?error=auth`;
   const response = NextResponse.redirect(redirectTo);
+  const redirectWithCookies = (target: string) => {
+    const res = NextResponse.redirect(target);
+    for (const cookie of response.cookies.getAll()) {
+      res.cookies.set(cookie.name, cookie.value);
+    }
+    return res;
+  };
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -35,12 +43,19 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error && data.user) {
+    if (error || !data.user) {
+      console.error("[api/auth/callback] exchangeCodeForSession failed", error);
+      return redirectWithCookies(`${origin}/login?error=oauth`);
+    }
+
+    try {
       const authUserId = data.user.id;
       const email = data.user.email ?? "";
       const meta = data.user.user_metadata ?? {};
       const firstName = meta.given_name ?? meta.first_name ?? meta.full_name?.split(" ")[0] ?? null;
-      const lastName = (meta.family_name ?? meta.last_name ?? meta.full_name?.split(" ").slice(1).join(" ")) || null;
+      const lastName =
+        (meta.family_name ?? meta.last_name ?? meta.full_name?.split(" ").slice(1).join(" ")) ||
+        null;
       const avatarUrl = meta.avatar_url ?? meta.picture ?? null;
       const phone = meta.phone ?? null;
 
@@ -49,27 +64,49 @@ export async function GET(request: NextRequest) {
       });
 
       if (!existingUser) {
-        const workspaceName = firstName
-          ? `${firstName}'s Workspace`
-          : `${email.split("@")[0]}'s Workspace`;
-        const [newOrg] = await db
-          .insert(org)
-          .values({ name: workspaceName })
-          .returning();
+        const existingByEmail = email
+          ? await db.query.user.findFirst({
+              where: (u, { eq }) => eq(u.email, email),
+            })
+          : null;
 
-        if (newOrg) {
-          await db.insert(user).values({
-            orgId: newOrg.id,
-            email,
-            authUserId,
-            firstName,
-            lastName,
-            avatarUrl,
-            phone,
-          });
-          redirectTo = `${origin}/dashboard/sources?onboarding=1`;
-        } else {
+        if (existingByEmail) {
+          const profileUpdate: {
+            authUserId?: string;
+            firstName?: string;
+            lastName?: string;
+            avatarUrl?: string;
+            phone?: string;
+          } = {};
+          if (!existingByEmail.authUserId?.trim()) profileUpdate.authUserId = authUserId;
+          if (firstName != null && !existingByEmail.firstName?.trim()) profileUpdate.firstName = firstName;
+          if (lastName != null && !existingByEmail.lastName?.trim()) profileUpdate.lastName = lastName;
+          if (avatarUrl != null && !existingByEmail.avatarUrl?.trim()) profileUpdate.avatarUrl = avatarUrl;
+          if (phone != null && !existingByEmail.phone?.trim()) profileUpdate.phone = phone;
+          if (Object.keys(profileUpdate).length > 0) {
+            await db.update(user).set(profileUpdate).where(eq(user.id, existingByEmail.id));
+          }
           redirectTo = `${origin}${next}`;
+        } else {
+          const workspaceName = firstName
+            ? `${firstName}'s Workspace`
+            : `${email.split("@")[0]}'s Workspace`;
+          const [newOrg] = await db.insert(org).values({ name: workspaceName }).returning();
+
+          if (newOrg) {
+            await db.insert(user).values({
+              orgId: newOrg.id,
+              email,
+              authUserId,
+              firstName,
+              lastName,
+              avatarUrl,
+              phone,
+            });
+            redirectTo = `${origin}/dashboard/sources?onboarding=1`;
+          } else {
+            redirectTo = `${origin}${next}`;
+          }
         }
       } else {
         // Only fill in empty profile fields from Google — never overwrite user-set data (e.g. custom avatar)
@@ -83,13 +120,12 @@ export async function GET(request: NextRequest) {
         }
         redirectTo = `${origin}${next}`;
       }
-
-      const successResponse = NextResponse.redirect(redirectTo);
-      for (const cookie of response.cookies.getAll()) {
-        successResponse.cookies.set(cookie.name, cookie.value);
-      }
-      return successResponse;
+    } catch (err) {
+      console.error("[api/auth/callback] db sync failed", err);
+      return redirectWithCookies(`${origin}/login?error=callback`);
     }
+
+    return redirectWithCookies(redirectTo);
   }
 
   return response;
