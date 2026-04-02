@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
-import { eq } from "@doubleclout/db";
+import { eq } from "@doubleclout/db"; 
 
 const ZOOM_VERIFICATION_TOKEN = process.env.ZOOM_VERIFICATION_TOKEN;
 
