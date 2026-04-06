@@ -3,5 +3,10 @@
   "buildCommand": "pnpm --filter web build",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": "apps/web/.next",
+  "crons": [
+    { "path": "/api/cron/google-sync", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/gmail-sync", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/retention", "schedule": "0 3 * * *" }
+  ]
 }

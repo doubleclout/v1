@@ -113,9 +113,21 @@ export function SourcesClient({
   zoomConnected: boolean;
   zoomConfig: { autoProcessTranscripts?: boolean; recordedOnly?: boolean };
   googleConnected: boolean;
-  googleConfig: { folderIds?: string[]; monitorDocs?: boolean };
+  googleConfig: {
+    folderIds?: string[];
+    monitorDocs?: boolean;
+    driveCursor?: string | null;
+    syncEnabled?: boolean;
+    lastSyncAt?: string | null;
+  };
   gmailConnected: boolean;
-  gmailConfig: { labelIds?: string[]; senderWhitelist?: string[] };
+  gmailConfig: {
+    labelIds?: string[];
+    senderWhitelist?: string[];
+    gmailHistoryId?: string | null;
+    syncEnabled?: boolean;
+    lastSyncAt?: string | null;
+  };
   githubConnected: boolean;
   githubConfig: { repos?: string[]; includePRs?: boolean; includeIssues?: boolean; includeReleases?: boolean };
 }) {
@@ -123,6 +135,17 @@ export function SourcesClient({
   const [selectedChannels, setSelectedChannels] = useState<Set<string>>(new Set(slackChannelIds));
   const [loadingChannels, setLoadingChannels] = useState(false);
   const [savingChannels, setSavingChannels] = useState(false);
+  const [googleFolders, setGoogleFolders] = useState<{ id: string; name: string }[]>([]);
+  const [selectedGoogleFolders, setSelectedGoogleFolders] = useState<Set<string>>(
+    new Set(googleConfig.folderIds ?? [])
+  );
+  const [loadingGoogleFolders, setLoadingGoogleFolders] = useState(false);
+  const [savingGoogleConfig, setSavingGoogleConfig] = useState(false);
+  const [googleSyncEnabled, setGoogleSyncEnabled] = useState(googleConfig.syncEnabled !== false);
+  const [googleSyncing, setGoogleSyncing] = useState(false);
+  const [gmailSyncing, setGmailSyncing] = useState(false);
+  const [googleLastSyncAt, setGoogleLastSyncAt] = useState<string | null>(googleConfig.lastSyncAt ?? null);
+  const [gmailLastSyncAt, setGmailLastSyncAt] = useState<string | null>(gmailConfig.lastSyncAt ?? null);
 
   const showGoogleWorkspace = plan === "team" || plan === "enterprise";
 
@@ -148,6 +171,24 @@ export function SourcesClient({
     }
   }, [slackConnected]);
 
+  useEffect(() => {
+    if (!googleConnected) return;
+    setLoadingGoogleFolders(true);
+    Promise.all([
+      fetch("/api/google/folders").then((r) => (r.ok ? r.json() : { folders: [] })),
+      fetch("/api/google/config").then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([foldersData, configData]) => {
+        setGoogleFolders(foldersData.folders ?? []);
+        if (configData) {
+          setSelectedGoogleFolders(new Set(configData.folderIds ?? []));
+          setGoogleSyncEnabled(configData.syncEnabled !== false);
+          setGoogleLastSyncAt(configData.lastSyncAt ?? null);
+        }
+      })
+      .finally(() => setLoadingGoogleFolders(false));
+  }, [googleConnected]);
+
   const toggleChannel = (id: string) => {
     setSelectedChannels((prev) => {
       const next = new Set(prev);
@@ -165,6 +206,50 @@ export function SourcesClient({
       body: JSON.stringify({ channelIds: Array.from(selectedChannels) }),
     });
     setSavingChannels(false);
+  };
+
+  const toggleGoogleFolder = (id: string) => {
+    setSelectedGoogleFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const saveGoogleSettings = async () => {
+    setSavingGoogleConfig(true);
+    await fetch("/api/google/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        folderIds: Array.from(selectedGoogleFolders),
+        syncEnabled: googleSyncEnabled,
+      }),
+    });
+    setSavingGoogleConfig(false);
+  };
+
+  const runGoogleSync = async (mode: "backfill" | "incremental") => {
+    setGoogleSyncing(true);
+    await fetch("/api/google/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+    setGoogleLastSyncAt(new Date().toISOString());
+    setGoogleSyncing(false);
+  };
+
+  const runGmailSync = async (mode: "backfill" | "incremental") => {
+    setGmailSyncing(true);
+    await fetch("/api/gmail/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+    setGmailLastSyncAt(new Date().toISOString());
+    setGmailSyncing(false);
   };
 
   const connected = (id: string) =>
@@ -254,8 +339,31 @@ export function SourcesClient({
         </CardContent>
       )}
       {source.id === "gmail" && gmailConnected && (
-        <CardContent className="pt-0 text-sm text-zinc-600">
-          {gmailConfig.labelIds?.length ?? 0} labels · {gmailConfig.senderWhitelist?.length ?? 0} senders
+        <CardContent className="pt-0 text-sm text-zinc-600 space-y-3">
+          <div>
+            {gmailConfig.labelIds?.length ?? 0} labels · {gmailConfig.senderWhitelist?.length ?? 0} senders
+          </div>
+          <div className="text-xs text-zinc-500">
+            Last sync: {gmailLastSyncAt ? new Date(gmailLastSyncAt).toLocaleString() : "Never"}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={gmailSyncing}
+              onClick={() => runGmailSync("incremental")}
+            >
+              {gmailSyncing ? "Syncing..." : "Run sync now"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={gmailSyncing}
+              onClick={() => runGmailSync("backfill")}
+            >
+              Full backfill
+            </Button>
+          </div>
         </CardContent>
       )}
       {source.id === "github" && githubConnected && (
@@ -328,8 +436,74 @@ export function SourcesClient({
               </div>
             </CardHeader>
             {googleConnected && (
-              <CardContent className="pt-0 text-sm text-zinc-600">
-                {googleConfig.folderIds?.length ?? 0} folders · Docs: {googleConfig.monitorDocs ? "On" : "Off"}
+              <CardContent className="pt-0 space-y-4">
+                <div className="text-sm text-zinc-600">
+                  {selectedGoogleFolders.size} folders selected · Docs: {googleConfig.monitorDocs ? "On" : "Off"}
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-zinc-700">Folders to monitor</Label>
+                  {loadingGoogleFolders ? (
+                    <p className="text-sm text-zinc-500 mt-2">Loading Google Drive folders...</p>
+                  ) : (
+                    <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-zinc-200 p-3 space-y-2">
+                      {googleFolders.map((folder) => (
+                        <label
+                          key={folder.id}
+                          className="flex items-center gap-2 cursor-pointer hover:bg-zinc-50 rounded px-2 py-1.5 -mx-2"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedGoogleFolders.has(folder.id)}
+                            onChange={() => toggleGoogleFolder(folder.id)}
+                            className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                          />
+                          <span className="text-sm text-zinc-700">{folder.name}</span>
+                        </label>
+                      ))}
+                      {googleFolders.length === 0 && (
+                        <p className="text-sm text-zinc-500">No folders returned by Drive API.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={googleSyncEnabled}
+                    onChange={(e) => setGoogleSyncEnabled(e.target.checked)}
+                    className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                  />
+                  <span className="text-sm text-zinc-700">Enable periodic sync</span>
+                </label>
+                <div className="text-xs text-zinc-500">
+                  Last sync: {googleLastSyncAt ? new Date(googleLastSyncAt).toLocaleString() : "Never"}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={savingGoogleConfig}
+                    onClick={saveGoogleSettings}
+                  >
+                    {savingGoogleConfig ? "Saving..." : "Save folders"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={googleSyncing}
+                    onClick={() => runGoogleSync("incremental")}
+                  >
+                    {googleSyncing ? "Syncing..." : "Run sync now"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={googleSyncing}
+                    onClick={() => runGoogleSync("backfill")}
+                  >
+                    Full backfill
+                  </Button>
+                </div>
               </CardContent>
             )}
           </Card>

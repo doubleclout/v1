@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { org, integration } from "@doubleclout/db";
-import { eq, and } from "@doubleclout/db";
+import { eq } from "@doubleclout/db";
+import {
+  buildGoogleTokens,
+  exchangeGoogleOAuthCode,
+  getDefaultGoogleConfig,
+} from "@/lib/google-oauth";
+import { parseOAuthState } from "@/lib/oauth-state";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,25 +27,29 @@ export async function GET(request: Request) {
     );
   }
 
-  const orgId = state?.startsWith("org:") ? state.slice(4) : null;
+  const parsedState = parseOAuthState(state, "google");
+  if (!parsedState.ok) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sources?error=${parsedState.error}`
+    );
+  }
+  const orgId = parsedState.orgId;
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/google/oauth/callback`;
 
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: clientId!,
-      client_secret: clientSecret!,
-      redirect_uri: redirectUri,
-      grant_type: "authorization_code",
-    }),
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sources?error=google_not_configured`
+    );
+  }
+  const tokenData = await exchangeGoogleOAuthCode({
+    code,
+    clientId,
+    clientSecret,
+    redirectUri,
   });
-
-  const tokenData = await tokenRes.json();
 
   if (tokenData.error) {
     return NextResponse.redirect(
@@ -47,7 +57,7 @@ export async function GET(request: Request) {
     );
   }
 
-  let targetOrgId = orgId;
+  let targetOrgId: string | null = orgId;
   if (!targetOrgId) {
     const [newOrg] = await db
       .insert(org)
@@ -56,34 +66,46 @@ export async function GET(request: Request) {
     targetOrgId = newOrg!.id;
   }
 
+  const existingOrg = await db.query.org.findFirst({
+    where: (o, { eq }) => eq(o.id, targetOrgId!),
+  });
+  if (!existingOrg) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sources?error=invalid_org`
+    );
+  }
+
   const existingIntegration = await db.query.integration.findFirst({
     where: (i, { and, eq }) =>
       and(eq(i.orgId, targetOrgId!), eq(i.source, "google")),
   });
 
   if (existingIntegration) {
+    const mergedTokens = buildGoogleTokens(
+      tokenData,
+      existingIntegration.tokens as Record<string, string> | undefined
+    );
+    const mergedConfig = getDefaultGoogleConfig(
+      (existingIntegration.config as Record<string, unknown>) ?? {},
+      "google"
+    );
+
     await db
       .update(integration)
       .set({
-        tokens: {
-          access: tokenData.access_token,
-          refresh: tokenData.refresh_token,
-          ...(tokenData.expires_in && { expiry: String(Date.now() + tokenData.expires_in * 1000) }),
-        },
+        tokens: mergedTokens,
+        config: mergedConfig,
         status: "active",
         updatedAt: new Date(),
       })
       .where(eq(integration.id, existingIntegration.id));
   } else {
+    const defaultConfig = getDefaultGoogleConfig(undefined, "google");
     await db.insert(integration).values({
       orgId: targetOrgId!,
       source: "google",
-      config: { folderIds: [], monitorDocs: true },
-      tokens: {
-        access: tokenData.access_token,
-        refresh: tokenData.refresh_token,
-        ...(tokenData.expires_in && { expiry: String(Date.now() + tokenData.expires_in * 1000) }),
-      },
+      config: defaultConfig,
+      tokens: buildGoogleTokens(tokenData),
       status: "active",
     });
   }

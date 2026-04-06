@@ -80,9 +80,25 @@ export default async function SourcesPage({
         zoomConnected={!!zoomInt}
         zoomConfig={(zoomInt?.config as { autoProcessTranscripts?: boolean; recordedOnly?: boolean }) ?? {}}
         googleConnected={!!googleInt}
-        googleConfig={(googleInt?.config as { folderIds?: string[]; monitorDocs?: boolean }) ?? {}}
+        googleConfig={
+          (googleInt?.config as {
+            folderIds?: string[];
+            monitorDocs?: boolean;
+            driveCursor?: string | null;
+            syncEnabled?: boolean;
+            lastSyncAt?: string | null;
+          }) ?? {}
+        }
         gmailConnected={!!gmailInt}
-        gmailConfig={(gmailInt?.config as { labelIds?: string[]; senderWhitelist?: string[] }) ?? {}}
+        gmailConfig={
+          (gmailInt?.config as {
+            labelIds?: string[];
+            senderWhitelist?: string[];
+            gmailHistoryId?: string | null;
+            syncEnabled?: boolean;
+            lastSyncAt?: string | null;
+          }) ?? {}
+        }
         githubConnected={!!githubInt}
         githubConfig={(githubInt?.config as { repos?: string[]; includePRs?: boolean; includeIssues?: boolean; includeReleases?: boolean }) ?? {}}
       />

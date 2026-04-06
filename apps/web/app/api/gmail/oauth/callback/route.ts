@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
 import { eq, and } from "@doubleclout/db";
+import {
+  buildGoogleTokens,
+  exchangeGoogleOAuthCode,
+  getDefaultGoogleConfig,
+} from "@/lib/google-oauth";
+import { parseOAuthState } from "@/lib/oauth-state";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,30 +27,29 @@ export async function GET(request: Request) {
     );
   }
 
-  const orgId = state?.startsWith("org:") ? state.slice(4) : null;
-  if (!orgId) {
+  const parsedState = parseOAuthState(state, "gmail");
+  if (!parsedState.ok) {
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sources?error=no_org`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sources?error=${parsedState.error}`
     );
   }
+  const orgId = parsedState.orgId;
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/gmail/oauth/callback`;
 
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: clientId!,
-      client_secret: clientSecret!,
-      redirect_uri: redirectUri,
-      grant_type: "authorization_code",
-    }),
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sources?error=google_not_configured`
+    );
+  }
+  const tokenData = await exchangeGoogleOAuthCode({
+    code,
+    clientId,
+    clientSecret,
+    redirectUri,
   });
-
-  const tokenData = await tokenRes.json();
 
   if (tokenData.error) {
     return NextResponse.redirect(
@@ -58,28 +63,34 @@ export async function GET(request: Request) {
   });
 
   if (existingIntegration) {
+    const mergedTokens = buildGoogleTokens(
+      tokenData,
+      existingIntegration.tokens as Record<string, string> | undefined
+    );
+    const mergedConfig = getDefaultGoogleConfig(
+      (existingIntegration.config as Record<string, unknown>) ?? {},
+      "gmail"
+    );
     await db
       .update(integration)
       .set({
-        tokens: {
-          access: tokenData.access_token,
-          refresh: tokenData.refresh_token,
-          ...(tokenData.expires_in && { expiry: String(Date.now() + tokenData.expires_in * 1000) }),
-        },
+        tokens: mergedTokens,
+        config: mergedConfig,
         status: "active",
         updatedAt: new Date(),
       })
       .where(eq(integration.id, existingIntegration.id));
   } else {
+    const defaultConfig = getDefaultGoogleConfig(undefined, "gmail");
     await db.insert(integration).values({
       orgId,
       source: "gmail",
-      config: { labelIds: [], senderWhitelist: [] },
-      tokens: {
-        access: tokenData.access_token,
-        refresh: tokenData.refresh_token,
-        ...(tokenData.expires_in && { expiry: String(Date.now() + tokenData.expires_in * 1000) }),
+      config: {
+        ...defaultConfig,
+        labelIds: [],
+        senderWhitelist: [],
       },
+      tokens: buildGoogleTokens(tokenData),
       status: "active",
     });
   }

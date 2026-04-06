@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db";
+import { createOAuthState } from "@/lib/oauth-state";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,6 +13,22 @@ export async function GET(request: Request) {
   if (!clientId) {
     return NextResponse.json({ error: "Google not configured" }, { status: 500 });
   }
+  if (!orgId) {
+    return NextResponse.json({ error: "Missing org_id" }, { status: 400 });
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const dbUser = await db.query.user.findFirst({
+    where: (u, { eq }) => eq(u.authUserId, authUser.id),
+  });
+  if (!dbUser || dbUser.orgId !== orgId) {
+    return NextResponse.json({ error: "Invalid org context" }, { status: 403 });
+  }
 
   const scopes = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -18,7 +37,7 @@ export async function GET(request: Request) {
     "https://www.googleapis.com/auth/userinfo.profile",
   ].join(" ");
 
-  const state = orgId ? `org:${orgId}` : "";
+  const state = createOAuthState(orgId, "gmail");
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", redirectUri);
@@ -26,7 +45,7 @@ export async function GET(request: Request) {
   url.searchParams.set("scope", scopes);
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
-  if (state) url.searchParams.set("state", state);
+  url.searchParams.set("state", state);
 
   return NextResponse.redirect(url.toString());
 }

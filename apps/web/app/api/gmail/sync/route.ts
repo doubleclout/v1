@@ -15,15 +15,24 @@ export async function POST(request: Request) {
   });
   if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const [int] = await db.select().from(integration).where(and(eq(integration.orgId, dbUser.orgId), eq(integration.source, "gmail"))).limit(1);
+  const [int] = await db
+    .select()
+    .from(integration)
+    .where(and(eq(integration.orgId, dbUser.orgId), eq(integration.source, "gmail")))
+    .limit(1);
   if (!int?.tokens) return NextResponse.json({ error: "Gmail not connected" }, { status: 400 });
+  const { mode } = (await request.json().catch(() => ({}))) as { mode?: "backfill" | "incremental" };
 
   const connection = process.env.REDIS_URL
     ? { host: new URL(process.env.REDIS_URL).hostname, port: parseInt(new URL(process.env.REDIS_URL).port || "6379"), password: new URL(process.env.REDIS_URL).password }
     : { host: "localhost", port: 6379 };
 
   const queue = new Queue("process-gmail", { connection });
-  await queue.add("process-gmail", { orgId: dbUser.orgId, integrationId: int.id });
+  await queue.add("process-gmail", {
+    orgId: dbUser.orgId,
+    integrationId: int.id,
+    incremental: mode !== "backfill",
+  });
 
-  return NextResponse.json({ queued: true });
+  return NextResponse.json({ queued: true, mode: mode ?? "incremental" });
 }
