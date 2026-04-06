@@ -146,6 +146,8 @@ export function SourcesClient({
   const [gmailSyncing, setGmailSyncing] = useState(false);
   const [googleLastSyncAt, setGoogleLastSyncAt] = useState<string | null>(googleConfig.lastSyncAt ?? null);
   const [gmailLastSyncAt, setGmailLastSyncAt] = useState<string | null>(gmailConfig.lastSyncAt ?? null);
+  const [googleFoldersError, setGoogleFoldersError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   const showGoogleWorkspace = plan === "team" || plan === "enterprise";
 
@@ -162,6 +164,10 @@ export function SourcesClient({
   };
 
   useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
     if (slackConnected) {
       setLoadingChannels(true);
       fetch("/api/slack/channels")
@@ -174,12 +180,23 @@ export function SourcesClient({
   useEffect(() => {
     if (!googleConnected) return;
     setLoadingGoogleFolders(true);
+    setGoogleFoldersError(null);
     Promise.all([
-      fetch("/api/google/folders").then((r) => (r.ok ? r.json() : { folders: [] })),
+      fetch("/api/google/folders").then(async (r) => {
+        if (r.ok) return r.json();
+        const data = await r.json().catch(() => ({}));
+        return {
+          folders: [],
+          error:
+            [data.error, data.details].filter(Boolean).join(" - ") ||
+            "Failed to fetch folders",
+        };
+      }),
       fetch("/api/google/config").then((r) => (r.ok ? r.json() : null)),
     ])
       .then(([foldersData, configData]) => {
         setGoogleFolders(foldersData.folders ?? []);
+        if (foldersData.error) setGoogleFoldersError(foldersData.error);
         if (configData) {
           setSelectedGoogleFolders(new Set(configData.folderIds ?? []));
           setGoogleSyncEnabled(configData.syncEnabled !== false);
@@ -250,6 +267,12 @@ export function SourcesClient({
     });
     setGmailLastSyncAt(new Date().toISOString());
     setGmailSyncing(false);
+  };
+
+  const formatLastSync = (value: string | null) => {
+    if (!value) return "Never";
+    if (!hydrated) return "Syncing...";
+    return new Date(value).toLocaleString();
   };
 
   const connected = (id: string) =>
@@ -338,13 +361,89 @@ export function SourcesClient({
           Transcripts: {zoomConfig.autoProcessTranscripts !== false ? "On" : "Off"}
         </CardContent>
       )}
+      {source.id === "drive" && googleConnected && (
+        <CardContent className="pt-0 space-y-4">
+          <div className="text-sm text-zinc-600">
+            {selectedGoogleFolders.size} folders selected · Docs: {googleConfig.monitorDocs ? "On" : "Off"}
+          </div>
+          <div>
+            <Label className="text-sm font-medium text-zinc-700">Folders to monitor</Label>
+            {loadingGoogleFolders ? (
+              <p className="text-sm text-zinc-500 mt-2">Loading Google Drive folders...</p>
+            ) : (
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-zinc-200 p-3 space-y-2">
+                {googleFolders.map((folder) => (
+                  <label
+                    key={folder.id}
+                    className="flex items-center gap-2 cursor-pointer hover:bg-zinc-50 rounded px-2 py-1.5 -mx-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedGoogleFolders.has(folder.id)}
+                      onChange={() => toggleGoogleFolder(folder.id)}
+                      className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+                    />
+                    <span className="text-sm text-zinc-700">{folder.name}</span>
+                  </label>
+                ))}
+                {googleFolders.length === 0 && (
+                  <p className="text-sm text-zinc-500">No folders returned by Drive API.</p>
+                )}
+              </div>
+            )}
+          </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={googleSyncEnabled}
+              onChange={(e) => setGoogleSyncEnabled(e.target.checked)}
+              className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
+            />
+            <span className="text-sm text-zinc-700">Enable periodic sync</span>
+          </label>
+          <div className="text-xs text-zinc-500">
+            Last sync: {formatLastSync(googleLastSyncAt)}
+          </div>
+          {googleFoldersError && (
+            <div className="text-xs text-red-600">
+              Google folder fetch error: {googleFoldersError}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={savingGoogleConfig}
+              onClick={saveGoogleSettings}
+            >
+              {savingGoogleConfig ? "Saving..." : "Save folders"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={googleSyncing}
+              onClick={() => runGoogleSync("incremental")}
+            >
+              {googleSyncing ? "Syncing..." : "Run sync now"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={googleSyncing}
+              onClick={() => runGoogleSync("backfill")}
+            >
+              Full backfill
+            </Button>
+          </div>
+        </CardContent>
+      )}
       {source.id === "gmail" && gmailConnected && (
         <CardContent className="pt-0 text-sm text-zinc-600 space-y-3">
           <div>
             {gmailConfig.labelIds?.length ?? 0} labels · {gmailConfig.senderWhitelist?.length ?? 0} senders
           </div>
           <div className="text-xs text-zinc-500">
-            Last sync: {gmailLastSyncAt ? new Date(gmailLastSyncAt).toLocaleString() : "Never"}
+            Last sync: {formatLastSync(gmailLastSyncAt)}
           </div>
           <div className="flex gap-2">
             <Button
@@ -436,74 +535,8 @@ export function SourcesClient({
               </div>
             </CardHeader>
             {googleConnected && (
-              <CardContent className="pt-0 space-y-4">
-                <div className="text-sm text-zinc-600">
-                  {selectedGoogleFolders.size} folders selected · Docs: {googleConfig.monitorDocs ? "On" : "Off"}
-                </div>
-                <div>
-                  <Label className="text-sm font-medium text-zinc-700">Folders to monitor</Label>
-                  {loadingGoogleFolders ? (
-                    <p className="text-sm text-zinc-500 mt-2">Loading Google Drive folders...</p>
-                  ) : (
-                    <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-zinc-200 p-3 space-y-2">
-                      {googleFolders.map((folder) => (
-                        <label
-                          key={folder.id}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-zinc-50 rounded px-2 py-1.5 -mx-2"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedGoogleFolders.has(folder.id)}
-                            onChange={() => toggleGoogleFolder(folder.id)}
-                            className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
-                          />
-                          <span className="text-sm text-zinc-700">{folder.name}</span>
-                        </label>
-                      ))}
-                      {googleFolders.length === 0 && (
-                        <p className="text-sm text-zinc-500">No folders returned by Drive API.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={googleSyncEnabled}
-                    onChange={(e) => setGoogleSyncEnabled(e.target.checked)}
-                    className="rounded border-zinc-300 text-[var(--accent)] focus:ring-[var(--accent)]"
-                  />
-                  <span className="text-sm text-zinc-700">Enable periodic sync</span>
-                </label>
-                <div className="text-xs text-zinc-500">
-                  Last sync: {googleLastSyncAt ? new Date(googleLastSyncAt).toLocaleString() : "Never"}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={savingGoogleConfig}
-                    onClick={saveGoogleSettings}
-                  >
-                    {savingGoogleConfig ? "Saving..." : "Save folders"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={googleSyncing}
-                    onClick={() => runGoogleSync("incremental")}
-                  >
-                    {googleSyncing ? "Syncing..." : "Run sync now"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={googleSyncing}
-                    onClick={() => runGoogleSync("backfill")}
-                  >
-                    Full backfill
-                  </Button>
-                </div>
+              <CardContent className="pt-0 text-sm text-zinc-600">
+                Google connected. Configure folders and sync from the Google Drive card.
               </CardContent>
             )}
           </Card>

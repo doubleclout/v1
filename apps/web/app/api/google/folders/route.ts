@@ -35,15 +35,20 @@ export async function GET(request: Request) {
   const parentId = searchParams.get("parentId");
   const q = parentId
     ? `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
-    : "mimeType='application/vnd.google-apps.folder' and trashed=false";
+    : "'root' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
       q
-    )}&fields=files(id,name,parents),nextPageToken&pageSize=200&orderBy=name_natural`,
+    )}&fields=files(id,name,parents),nextPageToken&pageSize=200&orderBy=name_natural&supportsAllDrives=true&includeItemsFromAllDrives=true`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!res.ok) {
-    return NextResponse.json({ error: "Failed to fetch folders" }, { status: 502 });
+    const details = await res.text().catch(() => "");
+    console.error("[api/google/folders] failed", { status: res.status, details });
+    return NextResponse.json(
+      { error: `Failed to fetch folders (${res.status})`, details: details.slice(0, 400) },
+      { status: 502 }
+    );
   }
   const data = await res.json();
   return NextResponse.json({ folders: data.files ?? [] });

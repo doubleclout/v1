@@ -1,7 +1,17 @@
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import { Worker, Queue } from "bullmq";
 import { createDb, executionEvent, insight, integration } from "@doubleclout/db";
 import { eq, and } from "drizzle-orm";
 import { extractInsight } from "@doubleclout/ai";
+
+const currentFile = fileURLToPath(import.meta.url);
+const workersDir = path.dirname(currentFile);
+const repoRoot = path.resolve(workersDir, "..");
+
+dotenv.config({ path: path.join(repoRoot, ".env.local") });
+dotenv.config({ path: path.join(repoRoot, "apps/web/.env.local") });
 
 const connection = {
   host: process.env.REDIS_URL ? new URL(process.env.REDIS_URL).hostname : "localhost",
@@ -370,6 +380,7 @@ const processGoogleDoc = new Worker(
   "process-google-doc",
   async (job) => {
     const { orgId, folderId, integrationId, incremental = false } = job.data;
+    console.log("[process-google-doc] job start", { orgId, folderId, integrationId, incremental });
     const db = createDb();
     const [int] = await db.select().from(integration).where(eq(integration.id, integrationId)).limit(1);
     const config = (int?.config as GoogleConfig | undefined) ?? {};
@@ -408,7 +419,13 @@ const processGoogleDoc = new Worker(
             pageToken ? `&pageToken=${pageToken}` : ""
           }`
         );
-        if (!listRes.ok) break;
+        if (!listRes.ok) {
+          console.error("[process-google-doc] listFilesInFolder failed", {
+            status: listRes.status,
+            parentId,
+          });
+          break;
+        }
         const data = await listRes.json();
         out.push(...(data.files ?? []));
         pageToken = data.nextPageToken ?? "";
@@ -430,7 +447,13 @@ const processGoogleDoc = new Worker(
               q
             )}&fields=nextPageToken,files(id)&pageSize=200${pageToken ? `&pageToken=${pageToken}` : ""}`
           );
-          if (!listRes.ok) break;
+          if (!listRes.ok) {
+            console.error("[process-google-doc] listFoldersRecursively failed", {
+              status: listRes.status,
+              current,
+            });
+            break;
+          }
           const data = await listRes.json();
           for (const f of data.files ?? []) {
             if (!folderIds.has(f.id)) {
@@ -478,7 +501,12 @@ const processGoogleDoc = new Worker(
             accessToken,
             `https://www.googleapis.com/drive/v3/changes?pageToken=${pageToken}&fields=nextPageToken,newStartPageToken,changes(fileId,removed,file(id,name,mimeType,modifiedTime,parents))&pageSize=200`
           );
-          if (!changesRes.ok) break;
+          if (!changesRes.ok) {
+            console.error("[process-google-doc] changes API failed", {
+              status: changesRes.status,
+            });
+            break;
+          }
           const changesData = await changesRes.json();
           for (const change of changesData.changes ?? []) {
             if (change.removed || !change.file) continue;
@@ -609,7 +637,9 @@ const processGoogleDoc = new Worker(
       })
       .where(eq(integration.id, integrationId));
 
-    return { processed, skipped, total: files.length };
+    const result = { processed, skipped, total: files.length };
+    console.log("[process-google-doc] job done", result);
+    return result;
   },
   { connection }
 );

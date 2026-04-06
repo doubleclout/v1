@@ -11,6 +11,7 @@
     "@doubleclout/db": "workspace:*",
     "@doubleclout/shared": "workspace:*",
     "bullmq": "^5.1.0",
+    "dotenv": "^17.4.1",
     "drizzle-orm": "^0.29.3",
     "ioredis": "^5.3.2"
   },
