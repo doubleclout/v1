@@ -5,10 +5,14 @@ export async function GET(request: Request) {
   const orgId = searchParams.get("org_id");
 
   const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/linkedin/oauth/callback`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const redirectUri = appUrl ? `${appUrl}/api/linkedin/oauth/callback` : "";
 
-  if (!clientId) {
-    return NextResponse.json({ error: "LinkedIn not configured" }, { status: 500 });
+  if (!clientId || !appUrl) {
+    const fallbackOrigin = new URL(request.url).origin;
+    return NextResponse.redirect(
+      `${fallbackOrigin}/dashboard/publishing?error=linkedin_not_configured`
+    );
   }
 
   const scopes = ["openid", "profile", "w_member_social"].join(" ");

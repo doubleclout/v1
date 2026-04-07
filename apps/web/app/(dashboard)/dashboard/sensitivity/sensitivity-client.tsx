@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -56,6 +57,8 @@ export function SensitivityClient({
   const [toggles, setToggles] = useState<Record<string, string>>(initialToggles);
   const [strictness, setStrictness] = useState(initialStrictness);
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const firstRun = useRef(true);
 
   const toggle = (id: string, value: string) => {
     setToggles((prev) => ({ ...prev, [id]: value }));
@@ -63,13 +66,27 @@ export function SensitivityClient({
 
   const save = async () => {
     setSaving(true);
+    setSaveMessage(null);
     await fetch("/api/sensitivity/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orgId, toggles, redactionStrictness: strictness }),
     });
     setSaving(false);
+    setSaveMessage("Saved");
   };
+
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    setSaveMessage("Saving...");
+    const timeoutId = window.setTimeout(() => {
+      void save();
+    }, 350);
+    return () => window.clearTimeout(timeoutId);
+  }, [toggles, strictness]);
 
   const numericToggles = TOGGLE_OPTIONS.filter((t) => t.section === "numeric");
   const namesToggles = TOGGLE_OPTIONS.filter((t) => t.section === "names");
@@ -81,7 +98,7 @@ export function SensitivityClient({
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-6">
-        <Card>
+        <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
           <CardHeader>
             <CardTitle>Numeric Data</CardTitle>
             <CardDescription>Control numeric metrics in published content</CardDescription>
@@ -104,7 +121,7 @@ export function SensitivityClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
           <CardHeader>
             <CardTitle>Names</CardTitle>
             <CardDescription>Mask names in output</CardDescription>
@@ -127,7 +144,7 @@ export function SensitivityClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
           <CardHeader>
             <CardTitle>Strategic Info</CardTitle>
             <CardDescription>Protect internal strategy</CardDescription>
@@ -150,7 +167,7 @@ export function SensitivityClient({
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
           <CardHeader>
             <CardTitle>Redaction Strictness</CardTitle>
             <CardDescription>Low — Moderate — High</CardDescription>
@@ -173,12 +190,15 @@ export function SensitivityClient({
           </CardContent>
         </Card>
 
-        <Button onClick={save} disabled={saving}>
-          {saving ? "Saving..." : "Save settings"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving..." : "Save settings"}
+          </Button>
+          <span className="text-xs text-zinc-500">{saveMessage ?? "Auto-saves on change"}</span>
+        </div>
       </div>
 
-      <Card>
+      <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
         <CardHeader>
           <CardTitle>Preview</CardTitle>
           <CardDescription>Example draft with masking applied — updates live as you change settings</CardDescription>
@@ -191,8 +211,8 @@ export function SensitivityClient({
             </p>
           </div>
           {hasAskBeforePublish && (
-            <Button className="w-full bg-[var(--accent)] hover:opacity-90">
-              Refine or publish to LinkedIn
+            <Button className="w-full bg-[var(--accent)] hover:opacity-90" asChild>
+              <Link href="/dashboard/publishing">Refine or publish to LinkedIn</Link>
             </Button>
           )}
         </CardContent>

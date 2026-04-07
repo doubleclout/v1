@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { db } from "@/lib/db";
-import { insight } from "@doubleclout/db";
-import { eq, desc } from "@doubleclout/db";
+import { insight, integration, executionEvent } from "@doubleclout/db";
+import { eq, desc, sql } from "@doubleclout/db";
 import { InsightsClient } from "./insights-client";
+import { rankIdea } from "@/lib/idea-ranking";
 
 export default async function InsightsPage() {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function InsightsPage() {
 
   if (!dbUser) return null;
 
-  const insights = await db
+  const rawInsights = await db
     .select({
       id: insight.id,
       summary: insight.summary,
@@ -31,16 +32,50 @@ export default async function InsightsPage() {
     .orderBy(desc(insight.createdAt))
     .limit(50);
 
+  const insights = rawInsights
+    .map((item) => {
+      const ranked = rankIdea(item);
+      return {
+        ...item,
+        ideaScore: ranked.score,
+        ideaReasons: ranked.reasons,
+      };
+    })
+    .sort((a, b) => b.ideaScore - a.ideaScore);
+
+  const [connectedSourcesResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(integration)
+    .where(eq(integration.orgId, dbUser.orgId));
+
+  const [ingestedEventsResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(executionEvent)
+    .where(eq(executionEvent.orgId, dbUser.orgId));
+
+  const recentEvents = await db
+    .select({
+      id: executionEvent.id,
+      source: executionEvent.source,
+      type: executionEvent.type,
+      createdAt: executionEvent.createdAt,
+    })
+    .from(executionEvent)
+    .where(eq(executionEvent.orgId, dbUser.orgId))
+    .orderBy(desc(executionEvent.createdAt))
+    .limit(5);
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Insights</h1>
-        <p className="text-muted-foreground">
-          View and manage extracted insights from your sources
-        </p>
-      </div>
-
-      <InsightsClient insights={insights} user={{ firstName: dbUser.firstName, lastName: dbUser.lastName, avatarUrl: dbUser.avatarUrl }} />
+      <InsightsClient
+        insights={insights}
+        user={{ firstName: dbUser.firstName, lastName: dbUser.lastName, avatarUrl: dbUser.avatarUrl }}
+        stats={{
+          connectedSources: connectedSourcesResult?.count ?? 0,
+          ingestedEvents: ingestedEventsResult?.count ?? 0,
+          recentEvents,
+        }}
+      />
     </div>
   );
 }

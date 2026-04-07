@@ -7,6 +7,44 @@ import type {
   ToneConfig,
 } from "@doubleclout/shared";
 
+function heuristicSensitivity(text: string): "low" | "moderate" | "high" {
+  const lower = text.toLowerCase();
+  if (
+    lower.includes("revenue") ||
+    lower.includes("pricing") ||
+    lower.includes("salary") ||
+    lower.includes("confidential")
+  ) {
+    return "high";
+  }
+  if (
+    lower.includes("customer") ||
+    lower.includes("deadline") ||
+    lower.includes("roadmap") ||
+    lower.includes("bug")
+  ) {
+    return "moderate";
+  }
+  return "low";
+}
+
+function heuristicSummary(rawContent: string): string {
+  const compact = rawContent.replace(/\s+/g, " ").trim();
+  if (!compact) return "No summary extracted";
+  const firstSentence = compact.split(/[.!?]/).map((s) => s.trim()).find(Boolean);
+  return (firstSentence ?? compact).slice(0, 240);
+}
+
+function heuristicInsight(rawContent: string): ExtractInsightResult {
+  const compact = rawContent.replace(/\s+/g, " ").trim();
+  const confidence = compact.length >= 220 ? 0.78 : compact.length >= 120 ? 0.72 : 0.58;
+  return {
+    summary: heuristicSummary(rawContent),
+    confidence,
+    sensitivity: heuristicSensitivity(rawContent),
+  };
+}
+
 function getOpenAI() {
   const key = process.env.OPENAI_API_KEY;
   if (!key) throw new Error("OPENAI_API_KEY is required");
@@ -20,38 +58,46 @@ function getAnthropic() {
 }
 
 export async function extractInsight(rawContent: string): Promise<ExtractInsightResult> {
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are an analyst extracting execution insights from work context (Slack, Zoom, Google, etc.).
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return heuristicInsight(rawContent);
+    }
+
+    const response = await getOpenAI().chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an analyst extracting execution insights from work context (Slack, Zoom, Google, etc.).
 Extract actionable insights that could be shared as professional content.
 Return JSON with: summary (string), confidence (0-1, how likely this is a valuable insight), sensitivity (low|moderate|high).
 Be conservative: only high-quality insights get confidence > 0.7.`,
-      },
-      {
-        role: "user",
-        content: rawContent.slice(0, 8000), // Limit context
-      },
-    ],
-    response_format: { type: "json_object" },
-  });
+        },
+        {
+          role: "user",
+          content: rawContent.slice(0, 8000), // Limit context
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) throw new Error("No response from AI");
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("No response from AI");
 
-  const parsed = JSON.parse(content) as {
-    summary?: string;
-    confidence?: number;
-    sensitivity?: string;
-  };
+    const parsed = JSON.parse(content) as {
+      summary?: string;
+      confidence?: number;
+      sensitivity?: string;
+    };
 
-  return {
-    summary: parsed.summary ?? "No summary extracted",
-    confidence: Math.min(1, Math.max(0, parsed.confidence ?? 0.5)),
-    sensitivity: (parsed.sensitivity?.toLowerCase() ?? "low") as "low" | "moderate" | "high",
-  };
+    return {
+      summary: parsed.summary ?? "No summary extracted",
+      confidence: Math.min(1, Math.max(0, parsed.confidence ?? 0.5)),
+      sensitivity: (parsed.sensitivity?.toLowerCase() ?? "low") as "low" | "moderate" | "high",
+    };
+  } catch {
+    return heuristicInsight(rawContent);
+  }
 }
 
 export async function generateDraft(
@@ -59,26 +105,52 @@ export async function generateDraft(
   variation: DraftVariation,
   toneConfig?: ToneConfig
 ): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    const lead =
+      variation === "educational"
+        ? "One execution lesson worth sharing:"
+        : variation === "tactical"
+        ? "Practical playbook from execution:"
+        : "A reflection from recent execution:";
+    return [
+      lead,
+      "",
+      insightSummary.trim(),
+      "",
+      "What would you do differently in this situation?",
+    ].join("\n");
+  }
+
   const tone = toneConfig?.defaultTone ?? "educational";
   const customNotes = toneConfig?.customNotes ?? "";
 
-  const response = await getAnthropic().messages.create({
-    model: "claude-3-5-haiku-20241022",
-    max_tokens: 1024,
-    system: `You write professional LinkedIn-style posts from execution insights.
+  try {
+    const response = await getAnthropic().messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 1024,
+      system: `You write professional LinkedIn-style posts from execution insights.
 Variations: educational (teach), tactical (how-to), reflective (lessons learned).
 Tone: ${tone}. ${customNotes ? `Custom notes: ${customNotes}` : ""}
 Keep it concise (150-300 words). No hashtags unless asked.`,
-    messages: [
-      {
-        role: "user",
-        content: `Generate a ${variation} draft from this insight:\n\n${insightSummary}`,
-      },
-    ],
-  });
+      messages: [
+        {
+          role: "user",
+          content: `Generate a ${variation} draft from this insight:\n\n${insightSummary}`,
+        },
+      ],
+    });
 
-  const text = response.content.find((c) => c.type === "text");
-  return text && "text" in text ? text.text : "";
+    const text = response.content.find((c) => c.type === "text");
+    return text && "text" in text ? text.text : "";
+  } catch {
+    const fallbackLead =
+      variation === "educational"
+        ? "One useful lesson from this execution:"
+        : variation === "tactical"
+        ? "How we would execute this next time:"
+        : "What this taught us:";
+    return [fallbackLead, "", insightSummary.trim()].join("\n");
+  }
 }
 
 export function applyRedaction(

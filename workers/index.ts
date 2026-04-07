@@ -376,6 +376,15 @@ const insightExtraction = new Worker(
   { connection }
 );
 
+insightExtraction.on("failed", (job, err) => {
+  console.error("[insight-extraction] job failed", {
+    jobId: job?.id,
+    orgId: job?.data?.orgId,
+    source: job?.data?.source,
+    error: err.message,
+  });
+});
+
 const processGoogleDoc = new Worker(
   "process-google-doc",
   async (job) => {

@@ -33,63 +33,20 @@ const PRIMARY_SOURCES = [
   },
 ];
 
-const GOOGLE_APPS = [
-  {
-    id: "drive",
-    name: "Google Drive",
-    description: "Files and folders. We monitor docs, sheets, and drive content for changes and surface insights from your team's work.",
-    logo: "/logos/drive.svg",
-    connectAs: "google",
-  },
-  {
-    id: "meet",
-    name: "Google Meet",
-    description: "Meeting transcripts and recordings. AI extracts takeaways and action items from every call.",
-    logo: "/logos/google-meet.svg",
-    connectAs: "google",
-  },
-  {
-    id: "chat",
-    name: "Google Chat",
-    description: "Chat spaces and direct messages. We capture conversations and context to surface insights from team discussions.",
-    logo: "/logos/google-chat.svg",
-    connectAs: "google",
-  },
-  {
-    id: "calendar",
-    name: "Google Calendar",
-    description: "Your calendar. Events and scheduling context inform when and how we surface insights.",
-    logo: "/logos/google-calendar.svg",
-    connectAs: "google",
-  },
-  {
-    id: "docs",
-    name: "Google Docs",
-    description: "Documents and collaborative editing. We track changes and surface insights from shared knowledge.",
-    logo: "https://cdn.simpleicons.org/googledocs",
-    connectAs: "google",
-  },
-  {
-    id: "sheets",
-    name: "Google Sheets",
-    description: "Spreadsheets. Data, updates, and changes inform content and insights.",
-    logo: "https://cdn.simpleicons.org/googlesheets",
-    connectAs: "google",
-  },
-  {
-    id: "forms",
-    name: "Google Forms",
-    description: "Form responses. Survey data and feedback surface insights from customer and team input.",
-    logo: "https://cdn.simpleicons.org/googleforms",
-    connectAs: "google",
-  },
-  {
-    id: "tasks",
-    name: "Google Tasks",
-    description: "Task lists. Project context and progress inform insights and content.",
-    logo: "https://cdn.simpleicons.org/googletasks",
-    connectAs: "google",
-  },
+const GOOGLE_WORKSPACE = {
+  id: "google_workspace",
+  name: "Google Workspace",
+  description:
+    "One-click connect for Drive plus Docs/Sheets signals, including Meet transcript docs saved in Drive.",
+  logo: "/logos/icons8-google.svg",
+  connectAs: "google",
+};
+
+const GOOGLE_WORKSPACE_APPS = [
+  { id: "drive", name: "Drive", logo: "/logos/drive.svg" },
+  { id: "meet", name: "Meet transcripts (via Drive)", logo: "/logos/google-meet.svg" },
+  { id: "docs", name: "Docs", logo: "https://cdn.simpleicons.org/googledocs" },
+  { id: "sheets", name: "Sheets", logo: "https://cdn.simpleicons.org/googlesheets" },
 ];
 
 export function SourcesClient({
@@ -148,8 +105,6 @@ export function SourcesClient({
   const [gmailLastSyncAt, setGmailLastSyncAt] = useState<string | null>(gmailConfig.lastSyncAt ?? null);
   const [googleFoldersError, setGoogleFoldersError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
-
-  const showGoogleWorkspace = plan === "team" || plan === "enterprise";
 
   const connectUrls: Record<string, string> = {
     slack: `/api/slack/oauth?org_id=${orgId}`,
@@ -311,13 +266,24 @@ export function SourcesClient({
               Connected
             </span>
           ) : (
-            <Button
-              size="sm"
-              className="shrink-0 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors"
-              onClick={() => handleConnect(connectUrls[source.connectAs ?? source.id])}
-            >
-              Connect
-            </Button>
+            source.id === "google_workspace" ? (
+              <Button
+                size="sm"
+                className="shrink-0 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors"
+                onClick={() => handleConnect(connectUrls[source.connectAs ?? source.id])}
+              >
+                Connect
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled
+                className="shrink-0 cursor-not-allowed text-zinc-500"
+              >
+                Coming soon
+              </Button>
+            )
           )}
         </div>
       </CardHeader>
@@ -361,8 +327,27 @@ export function SourcesClient({
           Transcripts: {zoomConfig.autoProcessTranscripts !== false ? "On" : "Off"}
         </CardContent>
       )}
-      {source.id === "drive" && googleConnected && (
+      {source.id === "google_workspace" && (
         <CardContent className="pt-0 space-y-4">
+          <div>
+            <Label className="text-sm font-medium text-zinc-700">Included apps</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {GOOGLE_WORKSPACE_APPS.map((app) => (
+                <span
+                  key={app.id}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs text-zinc-700"
+                >
+                  <Image src={app.logo} alt={app.name} width={14} height={14} unoptimized />
+                  {app.name}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">
+              Gmail is connected separately using the Gmail card below.
+            </p>
+          </div>
+          {googleConnected && (
+            <>
           <div className="text-sm text-zinc-600">
             {selectedGoogleFolders.size} folders selected · Docs: {googleConfig.monitorDocs ? "On" : "Off"}
           </div>
@@ -435,6 +420,8 @@ export function SourcesClient({
               Full backfill
             </Button>
           </div>
+            </>
+          )}
         </CardContent>
       )}
       {source.id === "gmail" && gmailConnected && (
@@ -475,73 +462,15 @@ export function SourcesClient({
 
   return (
     <div className="space-y-10">
-      {/* Primary: Slack, Zoom, Gmail, GitHub */}
+      <div className="grid gap-5">
+        {renderSourceCard(GOOGLE_WORKSPACE, connected(GOOGLE_WORKSPACE.connectAs))}
+      </div>
+
       <div className="grid gap-5 sm:grid-cols-2">
         {PRIMARY_SOURCES.map((source) =>
           renderSourceCard(source, connected(source.id))
         )}
       </div>
-
-      {/* Google apps: Drive, Meet, Chat, Calendar, Docs, Sheets, Forms, Tasks */}
-      <div className="grid gap-5 sm:grid-cols-2">
-        {GOOGLE_APPS.map((source) =>
-          renderSourceCard(source, connected(source.connectAs ?? source.id))
-        )}
-      </div>
-
-      {/* Google Workspace one-click - only for team/enterprise */}
-      {showGoogleWorkspace && (
-        <div className="pt-4 border-t border-zinc-200">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-zinc-900">Google Workspace</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              One-click connect for your organization. Access all apps above in a single sign-on.
-            </p>
-          </div>
-          <Card className="border-zinc-200/80 bg-white overflow-hidden transition-shadow hover:shadow-md">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-50 overflow-hidden">
-                    <Image
-                      src="https://cdn.simpleicons.org/google"
-                      alt="Google Workspace"
-                      width={28}
-                      height={28}
-                      unoptimized
-                    />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-zinc-900">Connect entire workspace</h3>
-                    <p className="mt-1.5 text-sm text-zinc-600">
-                      Single sign-on for your organization. Gmail, Drive, Meet, Chat, Calendar, Tasks, Docs, Sheets, Forms, all connected at once.
-                    </p>
-                  </div>
-                </div>
-                {googleConnected ? (
-                  <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Connected
-                  </span>
-                ) : (
-                  <Button
-                    size="sm"
-                    className="shrink-0 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors"
-                    onClick={() => handleConnect(connectUrls.google)}
-                  >
-                    Connect
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            {googleConnected && (
-              <CardContent className="pt-0 text-sm text-zinc-600">
-                Google connected. Configure folders and sync from the Google Drive card.
-              </CardContent>
-            )}
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

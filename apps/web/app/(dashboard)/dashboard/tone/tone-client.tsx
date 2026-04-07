@@ -48,7 +48,7 @@ export function ToneClient({
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
+      <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
         <CardHeader>
           <CardTitle>Your Voices</CardTitle>
           <CardDescription>Default tone for generated drafts</CardDescription>
@@ -58,7 +58,12 @@ export function ToneClient({
             <Label>My Voice</Label>
             <div className="mt-2 space-y-2">
               {TONES.map((t) => (
-                <label key={t.id} className="flex items-center gap-3 cursor-pointer">
+                <label
+                  key={t.id}
+                  className={`flex items-center gap-3 cursor-pointer rounded-lg border p-2 transition-colors ${
+                    tone === t.id ? "border-zinc-300 bg-zinc-50" : "border-transparent hover:border-zinc-200"
+                  }`}
+                >
                   <input
                     type="radio"
                     name="tone"
@@ -86,14 +91,14 @@ export function ToneClient({
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
         <CardHeader>
           <CardTitle>Creator Voices</CardTitle>
           <CardDescription>Learn from top creators. Use their style as a starting point.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {CREATOR_VOICES.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-lg border p-4">
+            <div key={c.id} className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-zinc-50">
               <div>
                 <p className="font-medium">{c.name}</p>
                 <p className="text-sm text-muted-foreground">{c.followers} · {c.style}</p>

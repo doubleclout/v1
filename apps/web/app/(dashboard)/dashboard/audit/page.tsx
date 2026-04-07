@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auditLog } from "@doubleclout/db";
 import { eq, desc } from "@doubleclout/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 
 export default async function AuditPage() {
   const supabase = await createClient();
@@ -30,14 +31,19 @@ export default async function AuditPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
         <CardHeader>
           <CardTitle>Recent activity</CardTitle>
           <CardDescription>Action, User, Timestamp, Source</CardDescription>
         </CardHeader>
         <CardContent>
           {logs.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No audit logs yet.</p>
+            <div className="py-8 text-center">
+              <p className="text-sm text-muted-foreground">No audit logs yet.</p>
+              <Link href="/dashboard/sources" className="mt-2 inline-block text-xs font-medium text-[var(--accent)] hover:underline">
+                Connect a source to start activity
+              </Link>
+            </div>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -49,7 +55,7 @@ export default async function AuditPage() {
               </thead>
               <tbody>
                 {logs.map((log) => (
-                  <tr key={log.id} className="border-b">
+                  <tr key={log.id} className="border-b transition-colors hover:bg-zinc-50">
                     <td className="py-3 px-4">{log.action}</td>
                     <td className="py-3 px-4">{log.source ?? "—"}</td>
                     <td className="py-3 px-4">{new Date(log.createdAt).toLocaleString()}</td>

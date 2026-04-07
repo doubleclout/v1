@@ -2,6 +2,7 @@ const path = require("path");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   transpilePackages: ["@doubleclout/db", "@doubleclout/ai", "@doubleclout/shared"],
   images: {
     remotePatterns: [
@@ -13,6 +14,13 @@ const nextConfig = {
   },
   experimental: {
     outputFileTracingRoot: path.join(__dirname, "../.."),
+  },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      // Avoid flaky module/chunk mismatches in local dev during frequent HMR updates.
+      config.cache = false;
+    }
+    return config;
   },
 };
 

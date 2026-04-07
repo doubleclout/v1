@@ -68,7 +68,7 @@ export default async function SourcesPage({
       <div>
         <h1 className="text-2xl font-display font-semibold tracking-tight text-zinc-900">Sources</h1>
         <p className="mt-1 text-zinc-600">
-          Connect Slack, Zoom, Google Workspace, Gmail, and GitHub. Ideas surface from your actual work.
+          Connect Google Workspace first, then add other sources as they become available.
         </p>
       </div>
 

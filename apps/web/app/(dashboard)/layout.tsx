@@ -60,7 +60,7 @@ export default async function DashboardLayout({
     <div className="flex h-screen overflow-hidden bg-[#fafaf9]">
       <SetReturningCookie />
       <Sidebar org={dbUser.org} user={dbUser} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
         <DashboardHeader />
         <main className="flex-1">
           <div className="p-6 max-w-5xl mx-auto w-full">{children}</div>

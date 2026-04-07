@@ -120,7 +120,7 @@ export function SettingsForm({ user }: { user: UserWithOrg }) {
   const displayName = [firstName || user.firstName, lastName || user.lastName].filter(Boolean).join(" ") || user.email;
 
   return (
-    <Card>
+    <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
       <CardHeader>
         <CardTitle>Profile</CardTitle>
         <CardDescription>

@@ -14,11 +14,11 @@ export function DashboardHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-end border-b border-zinc-200/80 bg-white px-6">
+    <header className="sticky top-0 z-10 flex h-16 items-start justify-end bg-[#fafaf9] px-6 pt-4">
       <button
         type="button"
         onClick={handleSignOut}
-        className="text-sm font-medium text-zinc-600 hover:text-zinc-900 transition-colors"
+        className="text-sm font-medium leading-none text-zinc-600 transition-colors hover:text-zinc-900"
       >
         Sign out
       </button>
