@@ -85,15 +85,9 @@ export function PublishingClient({
           )}
         </CardHeader>
         {linkedInConnected && (
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Default visibility: {config.defaultVisibility ?? "PUBLIC"}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Hashtags: {config.hashtagsEnabled ? "On" : "Off"}
-            </p>
-            <p className="text-xs text-zinc-500 mt-2">
-              Tip: Generate and refine drafts in Insights Draft Lab, then publish here.
+          <CardContent className="pt-0">
+            <p className="text-xs text-zinc-500">
+              Connected and ready. Open an insight, refine in Draft Lab, then publish.
             </p>
           </CardContent>
         )}
@@ -121,7 +115,7 @@ export function PublishingClient({
                     <p className="mt-1 text-xs text-zinc-600">{idea.sourceAttribution ?? "From your work"}</p>
                     <div className="mt-2">
                       <Button size="sm" variant="outline" asChild>
-                        <Link href={`/dashboard/insights/${idea.id}`}>Open Draft Lab</Link>
+                        <Link href={`/dashboard/insights/${idea.id}`}>Open Insights Tab</Link>
                       </Button>
                     </div>
                   </li>

@@ -28,6 +28,12 @@ type Message = {
   text: string;
 };
 
+type LinkedInProfile = {
+  name?: string;
+  headline?: string;
+  avatarUrl?: string | null;
+};
+
 function cleanSummary(text: string) {
   return text
     .replace(/\s+/g, " ")
@@ -96,6 +102,18 @@ function locallyRefineDraft(content: string, instruction: string, format: Conten
   return `${content}\n\nRefined angle (${format}): ${instruction}`;
 }
 
+function adaptDraftToFormat(content: string, format: ContentFormat) {
+  const compact = content.replace(/\n{3,}/g, "\n\n").trim();
+  if (format === "short") {
+    return compact.slice(0, 340).trim();
+  }
+  if (format === "long") {
+    if (compact.length > 700) return compact;
+    return `${compact}\n\nWhat changed in execution:\n- clearer priorities\n- faster weekly iteration\n- stronger ownership\n\nHow would you approach this in your team?`;
+  }
+  return compact.slice(0, 720).trim();
+}
+
 export function DraftLabClient({
   insight,
   user,
@@ -110,7 +128,13 @@ export function DraftLabClient({
   const [draftLoading, setDraftLoading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<LinkedInProfile | null>(null);
   const [input, setInput] = useState("");
+  const [draftByFormat, setDraftByFormat] = useState<Record<ContentFormat, string>>({
+    medium: initialDraft ?? makeSeedDraft(insight.summary, "medium"),
+    short: adaptDraftToFormat(initialDraft ?? makeSeedDraft(insight.summary, "medium"), "short"),
+    long: adaptDraftToFormat(initialDraft ?? makeSeedDraft(insight.summary, "medium"), "long"),
+  });
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "assistant-1",
@@ -119,14 +143,44 @@ export function DraftLabClient({
     },
   ]);
 
-  const authorName = [user.firstName, user.lastName].filter(Boolean).join(" ") || "Your Name";
-  const authorTitle = "Your Title · Company";
+  const authorName = profile?.name || [user.firstName, user.lastName].filter(Boolean).join(" ") || "Your Name";
+  const authorTitle = profile?.headline || "LinkedIn member";
   const createdAt = useMemo(() => new Date(insight.createdAt).toISOString().slice(0, 10), [insight.createdAt]);
   const [currentStatus, setCurrentStatus] = useState(insight.status);
 
   useEffect(() => {
     if (initialDraft) setDraftContent(initialDraft);
   }, [initialDraft]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadLinkedInProfile = async () => {
+      try {
+        const response = await fetch("/api/linkedin/profile", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json().catch(() => null)) as { profile?: LinkedInProfile } | null;
+        if (!cancelled && payload?.profile) setProfile(payload.profile);
+      } catch {
+        // Non-blocking for preview.
+      }
+    };
+    void loadLinkedInProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const existing = draftByFormat[format];
+    if (existing) {
+      setDraftContent(existing);
+      return;
+    }
+    setDraftContent(adaptDraftToFormat(draftContent, format));
+    // Also request a format-specific draft from backend so toggles are truly functional.
+    void generateDraft(format);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [format]);
 
   useEffect(() => {
     // Opening Draft Lab means this idea is selected for drafting.
@@ -146,14 +200,14 @@ export function DraftLabClient({
     void markSelected();
   }, [currentStatus, insight.id]);
 
-  async function generateDraft() {
+  async function generateDraft(targetFormat: ContentFormat = format) {
     setDraftLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/insights/generate-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ insightId: insight.id, format }),
+        body: JSON.stringify({ insightId: insight.id, format: targetFormat }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
@@ -161,7 +215,10 @@ export function DraftLabClient({
       }
       const content = payload?.draft?.content;
       if (!content || typeof content !== "string") throw new Error("No draft returned");
-      setDraftContent(content);
+      setDraftByFormat((prev) => ({ ...prev, [targetFormat]: content }));
+      if (targetFormat === format) {
+        setDraftContent(content);
+      }
       setCurrentStatus("draft_generated");
       setMessages((prev) => [
         ...prev,
@@ -207,6 +264,7 @@ export function DraftLabClient({
     setMessages((prev) => [...prev, { id: `user-${Date.now()}`, role: "user", text: trimmed }]);
     const next = locallyRefineDraft(draftContent, trimmed, format);
     setDraftContent(next);
+    setDraftByFormat((prev) => ({ ...prev, [format]: next }));
     setMessages((prev) => [
       ...prev,
       { id: `assistant-${Date.now()}-2`, role: "assistant", text: "Refined. If you want, I can make it shorter, more contrarian, or add a stronger CTA." },
