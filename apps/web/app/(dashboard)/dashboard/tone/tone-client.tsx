@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,7 @@ export function ToneClient({
   customNotes: string;
   activeVoiceId: string;
 }) {
+  const router = useRouter();
   const [tone, setTone] = useState(defaultTone);
   const [notes, setNotes] = useState(customNotes);
   const [activeVoice, setActiveVoice] = useState(activeVoiceId);
@@ -41,8 +43,10 @@ export function ToneClient({
     await fetch("/api/tone/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      keepalive: true,
       body: JSON.stringify({ orgId, defaultTone: tone, customNotes: notes, activeVoiceId: activeVoice }),
     });
+    router.refresh();
     setSaving(false);
   };
 

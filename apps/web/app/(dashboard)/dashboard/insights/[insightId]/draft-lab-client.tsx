@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LinkedInPreview } from "@/components/dashboard/linkedin-preview";
@@ -33,6 +34,14 @@ type LinkedInProfile = {
   headline?: string;
   avatarUrl?: string | null;
 };
+
+function statusLabel(status: string) {
+  if (status === "internal") return "selected";
+  if (status === "draft_generated") return "drafted";
+  if (status === "published") return "published";
+  if (status === "ignored") return "archived";
+  return "insight";
+}
 
 function cleanSummary(text: string) {
   return text
@@ -123,17 +132,25 @@ export function DraftLabClient({
   user: DraftLabUser;
   initialDraft: string | null;
 }) {
+  const router = useRouter();
   const [format, setFormat] = useState<ContentFormat>("medium");
-  const [draftContent, setDraftContent] = useState(initialDraft ?? makeSeedDraft(insight.summary, "medium"));
+  const [draftContent, setDraftContent] = useState(initialDraft ?? "");
   const [draftLoading, setDraftLoading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionNote, setActionNote] = useState<string | null>(null);
   const [profile, setProfile] = useState<LinkedInProfile | null>(null);
   const [input, setInput] = useState("");
-  const [draftByFormat, setDraftByFormat] = useState<Record<ContentFormat, string>>({
-    medium: initialDraft ?? makeSeedDraft(insight.summary, "medium"),
-    short: adaptDraftToFormat(initialDraft ?? makeSeedDraft(insight.summary, "medium"), "short"),
-    long: adaptDraftToFormat(initialDraft ?? makeSeedDraft(insight.summary, "medium"), "long"),
+  const [draftByFormat, setDraftByFormat] = useState<Record<ContentFormat, string>>(() => {
+    if (!initialDraft) {
+      return { short: "", medium: "", long: "" };
+    }
+    return {
+      medium: initialDraft,
+      short: adaptDraftToFormat(initialDraft, "short"),
+      long: adaptDraftToFormat(initialDraft, "long"),
+    };
   });
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -172,7 +189,7 @@ export function DraftLabClient({
 
   useEffect(() => {
     const existing = draftByFormat[format];
-    if (existing) {
+    if (existing !== undefined) {
       setDraftContent(existing);
       return;
     }
@@ -203,6 +220,7 @@ export function DraftLabClient({
   async function generateDraft(targetFormat: ContentFormat = format) {
     setDraftLoading(true);
     setError(null);
+    setActionNote(null);
     try {
       const response = await fetch("/api/insights/generate-draft", {
         method: "POST",
@@ -215,11 +233,19 @@ export function DraftLabClient({
       }
       const content = payload?.draft?.content;
       if (!content || typeof content !== "string") throw new Error("No draft returned");
-      setDraftByFormat((prev) => ({ ...prev, [targetFormat]: content }));
+      const formatted = adaptDraftToFormat(content, targetFormat);
+      setDraftByFormat((prev) => ({ ...prev, [targetFormat]: formatted }));
       if (targetFormat === format) {
-        setDraftContent(content);
+        setDraftContent(formatted);
       }
       setCurrentStatus("draft_generated");
+      setActionNote(
+        targetFormat === "short"
+          ? "Short-form draft generated."
+          : targetFormat === "long"
+            ? "Long-form draft generated."
+            : "Medium-form draft generated."
+      );
       setMessages((prev) => [
         ...prev,
         { id: `assistant-${Date.now()}`, role: "assistant", text: "Draft generated. Want me to refine the hook, shorten it, or make it more tactical?" },
@@ -234,6 +260,7 @@ export function DraftLabClient({
   async function publishNow() {
     setPublishLoading(true);
     setError(null);
+    setActionNote(null);
     try {
       const response = await fetch("/api/insights/publish", {
         method: "POST",
@@ -243,6 +270,7 @@ export function DraftLabClient({
       const payload = await response.json().catch(() => null);
       if (!response.ok) throw new Error(payload?.error ?? `Update failed (${response.status})`);
       setCurrentStatus("published");
+      setActionNote("Published successfully.");
       setMessages((prev) => [
         ...prev,
         {
@@ -255,6 +283,39 @@ export function DraftLabClient({
       setError(e instanceof Error ? e.message : "Failed to publish");
     } finally {
       setPublishLoading(false);
+    }
+  }
+
+  async function deleteDraft() {
+    setDeleteLoading(true);
+    setError(null);
+    setActionNote(null);
+    try {
+      const response = await fetch("/api/insights/draft", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ insightId: insight.id }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(payload?.error ?? `Delete failed (${response.status})`);
+
+      setDraftByFormat({
+        medium: "",
+        short: "",
+        long: "",
+      });
+      setDraftContent("");
+      setCurrentStatus("internal");
+      setActionNote("Draft deleted. Preview cleared.");
+      router.refresh();
+      setMessages((prev) => [
+        ...prev,
+        { id: `assistant-${Date.now()}-deleted`, role: "assistant", text: "Draft deleted. You can generate a fresh version anytime." },
+      ]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete draft");
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -281,7 +342,7 @@ export function DraftLabClient({
               <h2 className="text-lg font-semibold text-zinc-900">{cleanSummary(insight.summary).slice(0, 90)}</h2>
               <p className="text-xs text-zinc-500 mt-1">From {getSourceLabel(insight.sourceAttribution)} · {createdAt}</p>
             </div>
-            <span className="inline-flex rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-600">{currentStatus}</span>
+            <span className="inline-flex rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-600">{statusLabel(currentStatus)}</span>
           </div>
 
           <div className="space-y-2 max-h-[360px] overflow-y-auto rounded-lg border border-zinc-200 p-3">
@@ -311,19 +372,40 @@ export function DraftLabClient({
       </Card>
 
       <div className="space-y-4">
-        <Card className="border-zinc-200/80 bg-white shadow-sm">
+        <Card className="border-zinc-200/80 bg-white shadow-sm overflow-hidden">
           <CardContent className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h3 className="text-sm font-semibold text-zinc-900">Preview</h3>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" disabled={draftLoading} onClick={() => void generateDraft()}>
-                  {draftLoading ? "Generating..." : "Generate draft"}
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2 text-xs"
+                  disabled={draftLoading}
+                  onClick={() => void generateDraft()}
+                >
+                  {draftLoading ? "Generating..." : currentStatus === "draft_generated" ? "Regenerate draft" : "Generate draft"}
                 </Button>
-                <Button size="sm" disabled={publishLoading} onClick={() => void publishNow()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2 text-xs"
+                  disabled={deleteLoading || !draftContent.trim()}
+                  onClick={() => void deleteDraft()}
+                >
+                  {deleteLoading ? "Deleting..." : "Delete draft"}
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  disabled={publishLoading}
+                  onClick={() => void publishNow()}
+                >
                   {publishLoading ? "Publishing..." : "Publish"}
                 </Button>
               </div>
             </div>
+            {actionNote ? <p className="text-xs text-emerald-700">{actionNote}</p> : null}
             <LinkedInPreview
               content={draftContent}
               format={format}

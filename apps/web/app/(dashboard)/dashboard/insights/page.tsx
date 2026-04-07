@@ -5,7 +5,12 @@ import { eq, desc, sql } from "@doubleclout/db";
 import { InsightsClient } from "./insights-client";
 import { rankIdea } from "@/lib/idea-ranking";
 
-export default async function InsightsPage() {
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ stage?: string }>;
+}) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
 
@@ -70,6 +75,15 @@ export default async function InsightsPage() {
       <InsightsClient
         insights={insights}
         user={{ firstName: dbUser.firstName, lastName: dbUser.lastName, avatarUrl: dbUser.avatarUrl }}
+        initialStage={
+          params?.stage === "pending" ||
+          params?.stage === "internal" ||
+          params?.stage === "draft_generated" ||
+          params?.stage === "published" ||
+          params?.stage === "ignored"
+            ? params.stage
+            : "all"
+        }
         stats={{
           connectedSources: connectedSourcesResult?.count ?? 0,
           ingestedEvents: ingestedEventsResult?.count ?? 0,

@@ -60,7 +60,7 @@ function getStageLabel(status: string) {
   if (status === "draft_generated") return "Drafted";
   if (status === "published") return "Published";
   if (status === "ignored") return "Archived";
-  return "Idea";
+  return "Insight";
 }
 
 function formatStableDate(date: Date | string) {
@@ -68,20 +68,30 @@ function formatStableDate(date: Date | string) {
   return d.toISOString().slice(0, 10);
 }
 
+function getNextStep(status: string) {
+  if (status === "draft_generated") return "Draft is ready. Open Draft Lab to edit or publish.";
+  if (status === "internal") return "Selected. Open Draft Lab to generate/refine the post.";
+  if (status === "published") return "Published. Open to review or regenerate a new variant.";
+  if (status === "ignored") return "Archived. Restore if you want to work on this insight.";
+  return "Open Draft Lab to generate the first draft.";
+}
+
 export function InsightsClient({
   insights,
   stats,
+  initialStage = "all",
 }: {
   insights: InsightRow[];
   user: { firstName?: string | null; lastName?: string | null; avatarUrl?: string | null };
   stats: InsightsStats;
+  initialStage?: "all" | InsightStatus;
 }) {
   const [currentInsights, setCurrentInsights] = useState(insights);
   const [currentStats, setCurrentStats] = useState(stats);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [stageUpdatingId, setStageUpdatingId] = useState<string | null>(null);
-  const [activeStage, setActiveStage] = useState<"all" | InsightStatus>("all");
+  const [activeStage, setActiveStage] = useState<"all" | InsightStatus>(initialStage);
   const [activeSource, setActiveSource] = useState<string>("all");
 
   const hasConnectedSources = currentStats.connectedSources > 0;
@@ -151,7 +161,7 @@ export function InsightsClient({
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold">Ideas</h1>
+          <h1 className="text-2xl font-semibold">Insights</h1>
         </div>
         <Card className="border-zinc-200/80 bg-white shadow-sm">
           <CardContent className="py-16 text-center">
@@ -205,11 +215,11 @@ export function InsightsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Ideas</h1>
+        <h1 className="text-2xl font-semibold">Insights</h1>
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-zinc-600">Pick an idea and open Draft Lab.</p>
+        <p className="text-sm text-zinc-600">Pick an insight and open Draft Lab.</p>
         {refreshError ? <span className="text-xs text-red-600">{refreshError}</span> : null}
       </div>
 
@@ -218,7 +228,7 @@ export function InsightsClient({
         <div className="flex flex-wrap gap-2">
           {[
             { id: "all", label: "All" },
-            { id: "pending", label: "Ideas" },
+            { id: "pending", label: "Insights" },
             { id: "internal", label: "Selected" },
             { id: "draft_generated", label: "Drafted" },
             { id: "published", label: "Published" },
@@ -294,37 +304,22 @@ export function InsightsClient({
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <Button size="sm" variant="outline" asChild>
-                  <Link href={`/dashboard/insights/${i.id}`}>Open</Link>
+                  <Link href={`/dashboard/insights/${i.id}`} prefetch={false}>
+                    {i.status === "published" ? "View Draft Lab" : "Open Draft Lab"}
+                  </Link>
                 </Button>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-xs text-zinc-500">{getNextStep(i.status)}</p>
               <Button
                 size="sm"
                 variant="ghost"
                 className="h-8 px-2 text-zinc-600"
-                disabled={stageUpdatingId === i.id || i.status === "internal"}
-                onClick={() => void updateInsightStage(i.id, "internal")}
+                disabled={stageUpdatingId === i.id}
+                onClick={() => void updateInsightStage(i.id, i.status === "ignored" ? "pending" : "ignored")}
               >
-                Move to selected
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-zinc-600"
-                disabled={stageUpdatingId === i.id || i.status === "draft_generated"}
-                onClick={() => void updateInsightStage(i.id, "draft_generated")}
-              >
-                Move to draft queue
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-zinc-600"
-                disabled={stageUpdatingId === i.id || i.status === "ignored"}
-                onClick={() => void updateInsightStage(i.id, "ignored")}
-              >
-                Archive
+                {i.status === "ignored" ? "Restore" : "Archive"}
               </Button>
             </div>
           </div>

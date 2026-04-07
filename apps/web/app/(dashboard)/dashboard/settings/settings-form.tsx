@@ -32,7 +32,7 @@ export function SettingsForm({ user }: { user: UserWithOrg }) {
       try {
         const formData = new FormData();
         formData.set("file", file);
-        const res = await fetch("/api/user/avatar", { method: "POST", body: formData });
+        const res = await fetch("/api/user/avatar", { method: "POST", body: formData, keepalive: true });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Upload failed");
         setAvatarUrl(data.avatarUrl);
@@ -94,6 +94,7 @@ export function SettingsForm({ user }: { user: UserWithOrg }) {
       const res = await fetch("/api/user/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({
           firstName: firstName.trim(),
           lastName: lastName.trim(),

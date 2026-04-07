@@ -52,14 +52,12 @@ export default async function InsightDraftLabPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Draft Lab</h1>
-          <p className="text-muted-foreground">Refine this idea in conversation, then publish.</p>
-        </div>
-        <Link href="/dashboard/insights" className="text-sm text-zinc-600 hover:text-zinc-900">
-          Back to ideas
+      <div>
+        <Link href="/dashboard/insights" className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900">
+          ← Back
         </Link>
+        <h1 className="mt-2 text-2xl font-semibold">Draft Lab</h1>
+        <p className="text-muted-foreground">Refine this insight in conversation, then publish.</p>
       </div>
 
       <DraftLabClient

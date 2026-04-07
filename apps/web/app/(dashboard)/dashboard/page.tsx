@@ -58,75 +58,87 @@ export default async function DashboardPage() {
 
   const orgId = dbUser.orgId;
 
-  const [insightsResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(insight)
-    .where(eq(insight.orgId, orgId));
-
-  const [draftsResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(draft)
-    .where(eq(draft.orgId, orgId));
-
-  const [publishedResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(publication)
-    .where(and(eq(publication.orgId, orgId), eq(publication.status, "published")));
-
-  const recentInsights = await db
-    .select()
-    .from(insight)
-    .where(eq(insight.orgId, orgId))
-    .orderBy(desc(insight.createdAt))
-    .limit(5);
-
-  const [highSensitivityResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(insight)
-    .where(and(eq(insight.orgId, orgId), eq(insight.sensitivity, "high")));
-
-  const [connectedSourcesResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(integration)
-    .where(and(eq(integration.orgId, orgId), eq(integration.status, "active")));
-
-  const [eventsResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(executionEvent)
-    .where(eq(executionEvent.orgId, orgId));
-
-  const [ideaQueueResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(insight)
-    .where(and(eq(insight.orgId, orgId), sql`${insight.status} in ('pending', 'internal', 'draft_generated')`));
-
-  const recentEvents = await db
-    .select({
-      id: executionEvent.id,
-      source: executionEvent.source,
-      type: executionEvent.type,
-      createdAt: executionEvent.createdAt,
-    })
-    .from(executionEvent)
-    .where(eq(executionEvent.orgId, orgId))
-    .orderBy(desc(executionEvent.createdAt))
-    .limit(5);
-
-  const [tone] = await db.select().from(toneConfig).where(eq(toneConfig.orgId, orgId)).limit(1);
-  const [sensitivity] = await db.select().from(sensitivityConfig).where(eq(sensitivityConfig.orgId, orgId)).limit(1);
-
-  const published = await db
-    .select({
-      id: publication.id,
-      platform: publication.platform,
-      publishedAt: publication.publishedAt,
-      content: draft.content,
-    })
-    .from(publication)
-    .innerJoin(draft, eq(publication.draftId, draft.id))
-    .where(and(eq(publication.orgId, orgId), eq(publication.status, "published")))
-    .orderBy(desc(publication.publishedAt))
-    .limit(5);
+  const [
+    insightsResult,
+    draftsResult,
+    publishedResult,
+    recentInsights,
+    connectedSourcesResult,
+    eventsResult,
+    ideaQueueResult,
+    recentEvents,
+    tone,
+    sensitivity,
+    published,
+  ] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(insight)
+      .where(eq(insight.orgId, orgId))
+      .then((rows) => rows[0]),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(insight)
+      .where(and(eq(insight.orgId, orgId), eq(insight.status, "draft_generated")))
+      .then((rows) => rows[0]),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(publication)
+      .where(and(eq(publication.orgId, orgId), eq(publication.status, "published")))
+      .then((rows) => rows[0]),
+    db
+      .select()
+      .from(insight)
+      .where(eq(insight.orgId, orgId))
+      .orderBy(desc(insight.createdAt))
+      .limit(5),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(integration)
+      .where(
+        and(
+          eq(integration.orgId, orgId),
+          eq(integration.status, "active"),
+          sql`${integration.source} != 'linkedin'`
+        )
+      )
+      .then((rows) => rows[0]),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(executionEvent)
+      .where(eq(executionEvent.orgId, orgId))
+      .then((rows) => rows[0]),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(insight)
+      .where(and(eq(insight.orgId, orgId), sql`${insight.status} in ('pending', 'internal', 'draft_generated')`))
+      .then((rows) => rows[0]),
+    db
+      .select({
+        id: executionEvent.id,
+        source: executionEvent.source,
+        type: executionEvent.type,
+        createdAt: executionEvent.createdAt,
+      })
+      .from(executionEvent)
+      .where(eq(executionEvent.orgId, orgId))
+      .orderBy(desc(executionEvent.createdAt))
+      .limit(5),
+    db.select().from(toneConfig).where(eq(toneConfig.orgId, orgId)).limit(1).then((rows) => rows[0]),
+    db.select().from(sensitivityConfig).where(eq(sensitivityConfig.orgId, orgId)).limit(1).then((rows) => rows[0]),
+    db
+      .select({
+        id: publication.id,
+        platform: publication.platform,
+        publishedAt: publication.publishedAt,
+        content: draft.content,
+      })
+      .from(publication)
+      .innerJoin(draft, eq(publication.draftId, draft.id))
+      .where(and(eq(publication.orgId, orgId), eq(publication.status, "published")))
+      .orderBy(desc(publication.publishedAt))
+      .limit(5),
+  ]);
 
   return (
     <div className="space-y-8">
@@ -177,12 +189,12 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Link href="/dashboard/sensitivity">
+        <Link href="/dashboard/insights?stage=draft_generated">
           <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">High Sensitivity Ideas</CardDescription>
-              <CardTitle className="text-2xl font-semibold">{highSensitivityResult?.count ?? 0}</CardTitle>
-              <p className="text-xs text-zinc-500">Review masking rules</p>
+              <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">Drafts Pending</CardDescription>
+              <CardTitle className="text-2xl font-semibold">{draftsResult?.count ?? 0}</CardTitle>
+              <p className="text-xs text-zinc-500">Insights currently in drafted stage</p>
             </CardHeader>
           </Card>
         </Link>
@@ -200,7 +212,7 @@ export default async function DashboardPage() {
             <CardHeader className="pb-2">
               <CardDescription className="text-xs font-medium uppercase tracking-wider text-zinc-600">Redaction Strictness</CardDescription>
               <CardTitle className="text-2xl font-semibold capitalize">{sensitivity?.redactionStrictness ?? "moderate"}</CardTitle>
-              <p className="text-xs text-zinc-500">Adjust protection level</p>
+              <p className="text-xs text-zinc-500">Controls how aggressively sensitive details are masked before publish</p>
             </CardHeader>
           </Card>
         </Link>

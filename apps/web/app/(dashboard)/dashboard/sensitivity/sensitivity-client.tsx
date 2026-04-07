@@ -70,6 +70,7 @@ export function SensitivityClient({
     await fetch("/api/sensitivity/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      keepalive: true,
       body: JSON.stringify({ orgId, toggles, redactionStrictness: strictness }),
     });
     setSaving(false);
@@ -170,7 +171,7 @@ export function SensitivityClient({
         <Card className="border-zinc-200/80 bg-white transition-all hover:border-zinc-300 hover:shadow-sm">
           <CardHeader>
             <CardTitle>Redaction Strictness</CardTitle>
-            <CardDescription>Low — Moderate — High</CardDescription>
+            <CardDescription>Low keeps more context, Moderate balances readability and privacy, High aggressively masks sensitive details</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex gap-4">
