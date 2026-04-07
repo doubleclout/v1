@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("org_id");
@@ -9,9 +11,8 @@ export async function GET(request: Request) {
   const redirectUri = appUrl ? `${appUrl}/api/linkedin/oauth/callback` : "";
 
   if (!clientId || !appUrl) {
-    const fallbackOrigin = new URL(request.url).origin;
     return NextResponse.redirect(
-      `${fallbackOrigin}/dashboard/publishing?error=linkedin_not_configured`
+      `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/dashboard/publishing?error=linkedin_not_configured`
     );
   }
 

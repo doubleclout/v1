@@ -48,6 +48,10 @@ export function PublishingClient({
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {oauthError === "linkedin_not_configured"
             ? "LinkedIn OAuth is not configured in this environment yet. Add LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET, and NEXT_PUBLIC_APP_URL to enable connect."
+            : oauthError.startsWith("token_failed")
+            ? "LinkedIn token exchange failed. Check LinkedIn app scopes/products and callback URL configuration."
+            : oauthError === "linkedin_db_write_failed"
+            ? "LinkedIn auth succeeded, but saving the connection failed in database."
             : "LinkedIn connection failed. Please try again."}
         </div>
       ) : null}

@@ -3,8 +3,10 @@ import { db } from "@/lib/db";
 import { integration } from "@doubleclout/db";
 import { eq, and } from "@doubleclout/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const redirectWithError = (err: string) =>
     NextResponse.redirect(`${appUrl}/dashboard/publishing?error=${encodeURIComponent(err)}`);
 
@@ -53,39 +55,46 @@ export async function GET(request: Request) {
     } | null;
 
     if (!tokenRes.ok || tokenData?.error || !tokenData?.access_token) {
-      return redirectWithError("token_failed");
+      const detail = tokenData?.error ? `:${tokenData.error}` : "";
+      return redirectWithError(`token_failed${detail}`);
     }
 
-    const existingIntegration = await db.query.integration.findFirst({
-      where: (i, { and: dbAnd, eq: dbEq }) => dbAnd(dbEq(i.orgId, orgId), dbEq(i.source, "linkedin")),
-    });
+    try {
+      const existingIntegration = await db.query.integration.findFirst({
+        where: (i, { and: dbAnd, eq: dbEq }) => dbAnd(dbEq(i.orgId, orgId), dbEq(i.source, "linkedin")),
+      });
 
-    const tokens = {
-      access: tokenData.access_token,
-      ...(tokenData.expires_in ? { expiry: String(Date.now() + tokenData.expires_in * 1000) } : {}),
-    };
+      const tokens = {
+        access: tokenData.access_token,
+        ...(tokenData.expires_in ? { expiry: String(Date.now() + tokenData.expires_in * 1000) } : {}),
+      };
 
-    if (existingIntegration) {
-      await db
-        .update(integration)
-        .set({
+      if (existingIntegration) {
+        await db
+          .update(integration)
+          .set({
+            tokens,
+            status: "active",
+            updatedAt: new Date(),
+          })
+          .where(eq(integration.id, existingIntegration.id));
+      } else {
+        await db.insert(integration).values({
+          orgId,
+          source: "linkedin",
+          config: { defaultVisibility: "PUBLIC", hashtagsEnabled: false },
           tokens,
           status: "active",
-          updatedAt: new Date(),
-        })
-        .where(eq(integration.id, existingIntegration.id));
-    } else {
-      await db.insert(integration).values({
-        orgId,
-        source: "linkedin",
-        config: { defaultVisibility: "PUBLIC", hashtagsEnabled: false },
-        tokens,
-        status: "active",
-      });
+        });
+      }
+    } catch (dbError) {
+      console.error("LinkedIn callback db write failed", dbError);
+      return redirectWithError("linkedin_db_write_failed");
     }
 
     return NextResponse.redirect(`${appUrl}/dashboard/publishing?success=linkedin`);
-  } catch {
+  } catch (error) {
+    console.error("LinkedIn callback failed", error);
     return redirectWithError("linkedin_callback_failed");
   }
 }
